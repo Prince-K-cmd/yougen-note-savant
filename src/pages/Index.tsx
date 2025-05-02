@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UrlInput } from "@/components/youtube/UrlInput";
 import { VideoCard } from "@/components/youtube/VideoCard";
+import { PlaylistCard } from "@/components/youtube/PlaylistCard";
 import { Header } from "@/components/layout/Header";
 import { ResourceType, VideoMetadata, PlaylistMetadata } from "@/types/youtube";
 import { getAllVideos, getAllPlaylists } from "@/utils/storage";
@@ -23,6 +23,10 @@ export default function Index() {
 
   const handleVideoClick = (videoId: string) => {
     navigate(`/video/${videoId}`);
+  };
+
+  const handlePlaylistClick = (playlistId: string) => {
+    navigate(`/playlist/${playlistId}`);
   };
 
   return (
@@ -61,6 +65,24 @@ export default function Index() {
                     key={video.id}
                     video={video}
                     onClick={() => handleVideoClick(video.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Recent Playlists Section */}
+        {recentPlaylists.length > 0 && (
+          <section className="py-8 px-4">
+            <div className="container">
+              <h2 className="text-2xl font-bold mb-6">Recent Playlists</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {recentPlaylists.map((playlist) => (
+                  <PlaylistCard
+                    key={playlist.id}
+                    playlist={playlist}
+                    onClick={() => handlePlaylistClick(playlist.id)}
                   />
                 ))}
               </div>
