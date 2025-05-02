@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "@/components/youtube/VideoPlayer";
@@ -220,7 +221,7 @@ export default function VideoView() {
             </TabsList>
             
             {/* Chat Tab */}
-            <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden">
+            <TabsContent value="chat" className="flex-1 flex flex-col h-full">
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-6 text-center">
@@ -253,7 +254,7 @@ export default function VideoView() {
             </TabsContent>
             
             {/* Notes Tab */}
-            <TabsContent value="notes" className="flex-1 flex flex-col overflow-hidden">
+            <TabsContent value="notes" className="flex-1 flex flex-col h-full">
               <div className="p-4 flex justify-between items-center">
                 <h3 className="font-medium">Your Notes</h3>
                 <Button size="sm" onClick={() => setIsCreatingNote(true)}>
