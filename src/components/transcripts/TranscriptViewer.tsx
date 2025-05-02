@@ -48,7 +48,7 @@ export function TranscriptViewer({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="relative">
+      <div className="relative mb-2">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search transcript..."
@@ -58,24 +58,24 @@ export function TranscriptViewer({
         />
       </div>
       
-      <ScrollArea className="flex-1 mt-2">
+      <ScrollArea className="flex-1 pr-2">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
           </div>
         ) : filteredTranscript.length > 0 ? (
-          <div className="space-y-1 p-1">
+          <div className="space-y-1">
             {filteredTranscript.map((segment) => (
               <Button
                 key={segment.id}
                 variant="ghost"
-                className="w-full justify-start text-left h-auto py-2"
+                className="w-full justify-start text-left h-auto py-2 px-2"
                 onClick={() => onSegmentClick(segment.startTime)}
               >
-                <span className="text-muted-foreground mr-2 min-w-[40px]">
+                <span className="text-muted-foreground mr-2 min-w-[40px] flex-shrink-0">
                   {formatTimestamp(segment.startTime)}
                 </span>
-                <span className="line-clamp-2">{segment.text}</span>
+                <span>{segment.text}</span>
               </Button>
             ))}
           </div>

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "@/components/youtube/VideoPlayer";
@@ -19,6 +20,8 @@ import { v4 as uuidv4 } from "uuid";
 import { createTimestamp } from "@/utils/youtube";
 import { TranscriptViewer, TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
 import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
+import { Header } from "@/components/layout/Header";
+import { UrlInput } from "@/components/youtube/UrlInput";
 
 // Mock video data for initial UI rendering
 const mockVideoData = {
@@ -194,149 +197,165 @@ export default function VideoView() {
     }
   };
 
+  const handleUrlSubmit = (parseResult: { type: string; id: string; url: string }) => {
+    if (parseResult.type === ResourceType.VIDEO) {
+      navigate(`/video/${parseResult.id}`);
+    } else if (parseResult.type === ResourceType.PLAYLIST) {
+      navigate(`/playlist/${parseResult.id}`);
+    }
+  };
+
   return (
-    <div className="container py-6 px-4 sm:px-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Video Player Section */}
-        <div className="lg:col-span-2 space-y-4">
-          <VideoPlayer
-            videoId={videoId}
-            onTimeUpdate={setCurrentTime}
-            onReady={() => console.log("Video ready")}
-          />
-          
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">{videoData.title}</h2>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-sm text-muted-foreground">{videoData.channelTitle}</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Video className="h-4 w-4 mr-1" />
-                  Download
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsCreatingNote(true)}>
-                  <NoteIcon className="h-4 w-4 mr-1" />
-                  Take Note
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Create Note Form */}
-          {isCreatingNote && (
-            <div className="p-4 border rounded-lg bg-card">
-              <h3 className="text-lg font-medium mb-2">Create a Note</h3>
-              <NoteEditor
-                currentVideoTime={currentTime}
-                onSave={handleSaveNote}
-                onCancel={() => setIsCreatingNote(false)}
-              />
-            </div>
-          )}
-
-          <Separator className="my-6" />
-
-          {/* Video Description */}
-          <div>
-            <h3 className="text-lg font-medium mb-2">Description</h3>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {videoData.description}
-            </p>
-          </div>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      
+      <div className="container py-6 px-4 sm:px-6 flex-grow">
+        <div className="mb-4">
+          <UrlInput onSubmit={handleUrlSubmit} />
         </div>
-
-        {/* Tabs for Chat, Notes, and Transcript */}
-        <div className="h-[calc(100vh-16rem)] flex flex-col">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="chat" className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" />
-                <span>Chat</span>
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="flex items-center gap-1">
-                <NoteIcon className="h-4 w-4" />
-                <span>Notes</span>
-              </TabsTrigger>
-              <TabsTrigger value="transcript" className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                <span>Transcript</span>
-              </TabsTrigger>
-            </TabsList>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Video Player Section */}
+          <div className="lg:col-span-2 space-y-4">
+            <VideoPlayer
+              videoId={videoId}
+              onTimeUpdate={setCurrentTime}
+              onReady={() => console.log("Video ready")}
+            />
             
-            {/* Chat Tab */}
-            <TabsContent value="chat" className="flex-1 flex flex-col h-full">
-              <div className="flex-1 overflow-y-auto">
-                {messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mb-2" />
-                    <h3 className="text-lg font-medium">No messages yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Start a conversation about this video with our AI assistant.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {messages.map((message) => (
-                      <ChatMessage 
-                        key={message.id} 
-                        message={message} 
-                        onTimestampClick={message.videoTimestamp ? () => handleTimestampClick(message.videoTimestamp!.seconds) : undefined}
-                      />
-                    ))}
-                  </div>
-                )}
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">{videoData.title}</h2>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-sm text-muted-foreground">{videoData.channelTitle}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    <Video className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsCreatingNote(true)}>
+                    <NoteIcon className="h-4 w-4 mr-1" />
+                    Take Note
+                  </Button>
+                </div>
               </div>
-              
-              <div className="p-4 mt-auto">
-                <ChatInput 
-                  onSend={handleSendMessage} 
-                  isLoading={isLoading}
-                  placeholder="Ask about this video..."
+            </div>
+
+            {/* Create Note Form */}
+            {isCreatingNote && (
+              <div className="p-4 border rounded-lg bg-card">
+                <h3 className="text-lg font-medium mb-2">Create a Note</h3>
+                <NoteEditor
+                  currentVideoTime={currentTime}
+                  onSave={handleSaveNote}
+                  onCancel={() => setIsCreatingNote(false)}
                 />
               </div>
-            </TabsContent>
-            
-            {/* Notes Tab */}
-            <TabsContent value="notes" className="flex-1 flex flex-col h-full">
-              <div className="p-4 flex justify-between items-center">
-                <h3 className="font-medium">Your Notes</h3>
-                <Button size="sm" onClick={() => setIsCreatingNote(true)}>
-                  New Note
-                </Button>
-              </div>
+            )}
+
+            <Separator className="my-6" />
+
+            {/* Video Description */}
+            <div>
+              <h3 className="text-lg font-medium mb-2">Description</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {videoData.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs for Chat, Notes, and Transcript */}
+          <div className="h-[calc(100vh-16rem)] flex flex-col">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="chat" className="flex items-center gap-1">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Chat</span>
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="flex items-center gap-1">
+                  <NoteIcon className="h-4 w-4" />
+                  <span>Notes</span>
+                </TabsTrigger>
+                <TabsTrigger value="transcript" className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  <span>Transcript</span>
+                </TabsTrigger>
+              </TabsList>
               
-              <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
-                {notes.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                    <NoteIcon className="h-12 w-12 text-muted-foreground mb-2" />
-                    <h3 className="text-lg font-medium">No notes yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Create notes to save important information from this video.
-                    </p>
-                  </div>
-                ) : (
-                  notes.map((note) => (
-                    <NoteCard
-                      key={note.id}
-                      note={note}
-                      onDelete={() => handleDeleteNote(note.id)}
-                      onTimestampClick={note.videoTimestamp ? () => handleTimestampClick(note.videoTimestamp!.seconds) : undefined}
-                    />
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            
-            {/* Transcript Tab */}
-            <TabsContent value="transcript" className="flex-1 flex flex-col h-full">
-              <TranscriptViewer
-                videoId={videoId}
-                transcript={transcript}
-                onSegmentClick={handleTimestampClick}
-                isLoading={isLoadingTranscript}
-              />
-            </TabsContent>
-          </Tabs>
+              {/* Chat Tab */}
+              <TabsContent value="chat" className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="flex-1 overflow-y-auto">
+                  {messages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mb-2" />
+                      <h3 className="text-lg font-medium">No messages yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Start a conversation about this video with our AI assistant.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {messages.map((message) => (
+                        <ChatMessage 
+                          key={message.id} 
+                          message={message} 
+                          onTimestampClick={message.videoTimestamp ? () => handleTimestampClick(message.videoTimestamp!.seconds) : undefined}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4 mt-auto">
+                  <ChatInput 
+                    onSend={handleSendMessage} 
+                    isLoading={isLoading}
+                    placeholder="Ask about this video..."
+                  />
+                </div>
+              </TabsContent>
+              
+              {/* Notes Tab */}
+              <TabsContent value="notes" className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="p-4 flex justify-between items-center">
+                  <h3 className="font-medium">Your Notes</h3>
+                  <Button size="sm" onClick={() => setIsCreatingNote(true)}>
+                    New Note
+                  </Button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
+                  {notes.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                      <NoteIcon className="h-12 w-12 text-muted-foreground mb-2" />
+                      <h3 className="text-lg font-medium">No notes yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Create notes to save important information from this video.
+                      </p>
+                    </div>
+                  ) : (
+                    notes.map((note) => (
+                      <NoteCard
+                        key={note.id}
+                        note={note}
+                        onDelete={() => handleDeleteNote(note.id)}
+                        onTimestampClick={note.videoTimestamp ? () => handleTimestampClick(note.videoTimestamp!.seconds) : undefined}
+                      />
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+              
+              {/* Transcript Tab */}
+              <TabsContent value="transcript" className="flex-1 flex flex-col h-full overflow-hidden">
+                <TranscriptViewer
+                  videoId={videoId}
+                  transcript={transcript}
+                  onSegmentClick={handleTimestampClick}
+                  isLoading={isLoadingTranscript}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
     </div>
