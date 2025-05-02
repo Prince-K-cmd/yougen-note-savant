@@ -1,0 +1,57 @@
+
+import { Note } from '@/types/note';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
+
+interface NoteCardProps {
+  note: Note;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onTimestampClick?: () => void;
+}
+
+export function NoteCard({ note, onEdit, onDelete, onTimestampClick }: NoteCardProps) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base line-clamp-1">{note.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <p className="text-sm line-clamp-3 whitespace-pre-wrap">{note.content}</p>
+      </CardContent>
+      <CardFooter className="flex justify-between items-center pt-2 pb-2 text-xs text-muted-foreground border-t">
+        <div className="flex items-center gap-1">
+          {note.videoTimestamp && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 text-xs px-2 flex gap-1 items-center" 
+              onClick={onTimestampClick}
+            >
+              <Clock className="h-3 w-3" />
+              {note.videoTimestamp.formatted}
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-1">
+          {onEdit && (
+            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={onEdit}>
+              Edit
+            </Button>
+          )}
+          {onDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-destructive hover:bg-destructive/10" 
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+          )}
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}
