@@ -6,7 +6,7 @@ import { VideoCard } from "@/components/youtube/VideoCard";
 import { Header } from "@/components/layout/Header";
 import { ResourceType, VideoMetadata, PlaylistMetadata } from "@/types/youtube";
 import { getAllVideos, getAllPlaylists } from "@/utils/storage";
-import { Youtube } from "lucide-react";
+import { Youtube, MessageSquare, FileText as NoteIcon, Download } from "lucide-react";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ export default function Index() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-card p-6 rounded-lg shadow-sm">
                 <div className="h-12 w-12 rounded-lg bg-brand-purple/10 flex items-center justify-center mb-4">
-                  <ChatList className="h-6 w-6 text-brand-purple" />
+                  <MessageSquare className="h-6 w-6 text-brand-purple" />
                 </div>
                 <h3 className="text-xl font-medium mb-2">AI-Powered Insights</h3>
                 <p className="text-muted-foreground">
@@ -85,7 +85,7 @@ export default function Index() {
               
               <div className="bg-card p-6 rounded-lg shadow-sm">
                 <div className="h-12 w-12 rounded-lg bg-brand-teal/10 flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-brand-teal" />
+                  <NoteIcon className="h-6 w-6 text-brand-teal" />
                 </div>
                 <h3 className="text-xl font-medium mb-2">Smart Note-Taking</h3>
                 <p className="text-muted-foreground">

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "@/components/youtube/VideoPlayer";
@@ -12,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
-import { ChatList, FileText, Video } from "lucide-react";
+import { MessageSquare, FileText as NoteIcon, Video } from "lucide-react";
 import { parseYoutubeUrl } from "@/utils/youtube";
 import { ResourceType } from "@/types/youtube";
 import { getVideoMetadata, saveVideoMetadata, saveNote, getNotesByResourceId, saveChat, getChatsByResourceId } from "@/utils/storage";
@@ -176,7 +175,7 @@ export default function VideoView() {
                   Download
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setIsCreatingNote(true)}>
-                  <FileText className="h-4 w-4 mr-1" />
+                  <NoteIcon className="h-4 w-4 mr-1" />
                   Take Note
                 </Button>
               </div>
@@ -211,11 +210,11 @@ export default function VideoView() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="chat" className="flex items-center gap-1">
-                <ChatList className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" />
                 <span>Chat</span>
               </TabsTrigger>
               <TabsTrigger value="notes" className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
+                <NoteIcon className="h-4 w-4" />
                 <span>Notes</span>
               </TabsTrigger>
             </TabsList>
@@ -225,7 +224,7 @@ export default function VideoView() {
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                    <ChatList className="h-12 w-12 text-muted-foreground mb-2" />
+                    <MessageSquare className="h-12 w-12 text-muted-foreground mb-2" />
                     <h3 className="text-lg font-medium">No messages yet</h3>
                     <p className="text-sm text-muted-foreground mt-1">
                       Start a conversation about this video with our AI assistant.
@@ -265,7 +264,7 @@ export default function VideoView() {
               <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
                 {notes.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mb-2" />
+                    <NoteIcon className="h-12 w-12 text-muted-foreground mb-2" />
                     <h3 className="text-lg font-medium">No notes yet</h3>
                     <p className="text-sm text-muted-foreground mt-1">
                       Create notes to save important information from this video.
