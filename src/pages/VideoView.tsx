@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "@/components/youtube/VideoPlayer";
@@ -12,12 +11,14 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
-import { MessageSquare, FileText as NoteIcon, Video } from "lucide-react";
+import { MessageSquare, FileText as NoteIcon, Video, FileText } from "lucide-react";
 import { parseYoutubeUrl } from "@/utils/youtube";
 import { ResourceType } from "@/types/youtube";
 import { getVideoMetadata, saveVideoMetadata, saveNote, getNotesByResourceId, saveChat, getChatsByResourceId } from "@/utils/storage";
 import { v4 as uuidv4 } from "uuid";
 import { createTimestamp } from "@/utils/youtube";
+import { TranscriptViewer, TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
+import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
 
 // Mock video data for initial UI rendering
 const mockVideoData = {
@@ -43,6 +44,8 @@ export default function VideoView() {
   const [activeTab, setActiveTab] = useState("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
 
   // Load video data and notes
   useEffect(() => {
@@ -79,6 +82,32 @@ export default function VideoView() {
       setMessages(latestChat.messages);
     }
   }, [videoId, navigate]);
+
+  // Load transcript data
+  useEffect(() => {
+    if (!videoId) return;
+    
+    const loadTranscript = async () => {
+      setIsLoadingTranscript(true);
+      try {
+        // Check if we have a cached transcript
+        let videoTranscript = getTranscriptByVideoId(videoId);
+        
+        // If not, generate one
+        if (!videoTranscript) {
+          videoTranscript = await generateTranscript(videoId);
+        }
+        
+        setTranscript(videoTranscript || []);
+      } catch (error) {
+        console.error("Error loading transcript:", error);
+      } finally {
+        setIsLoadingTranscript(false);
+      }
+    };
+    
+    loadTranscript();
+  }, [videoId]);
 
   const handleSendMessage = (content: string) => {
     const userMessage: Message = {
@@ -151,8 +180,18 @@ export default function VideoView() {
   };
 
   const handleTimestampClick = (seconds: number) => {
-    // This would seek the video to the specified timestamp
-    console.log(`Seeking to ${seconds} seconds`);
+    if (document.querySelector('iframe')) {
+      // Access the YouTube iframe player
+      const iframe = document.querySelector('iframe');
+      const player = iframe?.contentWindow;
+      
+      // Send a postMessage to seek to the specified time
+      player?.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'seekTo',
+        args: [seconds, true]
+      }), '*');
+    }
   };
 
   return (
@@ -206,10 +245,10 @@ export default function VideoView() {
           </div>
         </div>
 
-        {/* Tabs for Chat and Notes */}
+        {/* Tabs for Chat, Notes, and Transcript */}
         <div className="h-[calc(100vh-16rem)] flex flex-col">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chat" className="flex items-center gap-1">
                 <MessageSquare className="h-4 w-4" />
                 <span>Chat</span>
@@ -217,6 +256,10 @@ export default function VideoView() {
               <TabsTrigger value="notes" className="flex items-center gap-1">
                 <NoteIcon className="h-4 w-4" />
                 <span>Notes</span>
+              </TabsTrigger>
+              <TabsTrigger value="transcript" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                <span>Transcript</span>
               </TabsTrigger>
             </TabsList>
             
@@ -282,6 +325,16 @@ export default function VideoView() {
                   ))
                 )}
               </div>
+            </TabsContent>
+            
+            {/* Transcript Tab */}
+            <TabsContent value="transcript" className="flex-1 flex flex-col h-full">
+              <TranscriptViewer
+                videoId={videoId}
+                transcript={transcript}
+                onSegmentClick={handleTimestampClick}
+                isLoading={isLoadingTranscript}
+              />
             </TabsContent>
           </Tabs>
         </div>
