@@ -1,9 +1,37 @@
 
-import { YoutubeParseResult, ResourceType, VideoMetadata, PlaylistMetadata } from '@/types/youtube';
+import { YoutubeParseResult, ResourceType, VideoMetadata, PlaylistMetadata, YoutubeTimestamp } from '@/types/youtube';
 
 // Function to get a placeholder thumbnail for videos or playlists
-export const getPlaceholderThumbnail = () => {
+export const getPlaceholderThumbnail = (): string => {
   return '/placeholder.svg';
+};
+
+// Function to create a timestamp object from seconds
+export const createTimestamp = (seconds: number): YoutubeTimestamp => {
+  return {
+    seconds,
+    formatted: formatDuration(`PT${Math.floor(seconds)}S`)
+  };
+};
+
+// Function to fetch video details (placeholder implementation)
+export const fetchVideoDetails = async (videoId: string): Promise<VideoMetadata | null> => {
+  console.log(`Fetching details for video ${videoId}`);
+  // In a real app, this would make an API call
+  // For now, return a placeholder
+  return {
+    id: videoId,
+    title: `Video ${videoId}`,
+    description: "Sample video description",
+    thumbnailUrl: getThumbnailUrl(videoId),
+    channelId: "sample-channel",
+    channelTitle: "Sample Channel",
+    author: "Sample Author",
+    publishedAt: new Date().toISOString(),
+    uploadDate: new Date().toISOString(),
+    viewCount: "1000",
+    duration: "5:00"
+  };
 };
 
 // Function to parse YouTube URLs and extract video or playlist IDs
