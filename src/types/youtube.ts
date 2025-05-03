@@ -1,4 +1,3 @@
-
 export interface VideoMetadata {
   id: string;
   title: string;
@@ -9,6 +8,8 @@ export interface VideoMetadata {
   thumbnailUrl: string;
   duration: string;
   viewCount: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface PlaylistMetadata {
@@ -21,6 +22,8 @@ export interface PlaylistMetadata {
   thumbnailUrl: string;
   itemCount: number;
   videos: VideoMetadata[];
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export type YoutubeResource = VideoMetadata | PlaylistMetadata;

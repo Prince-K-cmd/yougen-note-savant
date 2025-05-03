@@ -77,7 +77,7 @@ export const saveVideoMetadata = (video: VideoMetadata): void => {
         updatedAt: Date.now(),
       };
     } else {
-      const videoWithTimestamps: VideoMetadataWithTimestamps = {
+      const videoWithTimestamps: VideoMetadata = {
         ...video,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -134,7 +134,7 @@ export const savePlaylistMetadata = (
         updatedAt: Date.now(),
       };
     } else {
-      const playlistWithTimestamps: PlaylistMetadataWithTimestamps = {
+      const playlistWithTimestamps: PlaylistMetadata = {
         ...playlist,
         createdAt: Date.now(),
         updatedAt: Date.now(),
