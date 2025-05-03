@@ -18,14 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSettings, saveSettings } from "@/utils/storage";
+import { getSettings, saveSettings, Settings } from "@/utils/storage";
 import { Switch } from "@/components/ui/switch";
 
 export function GeneralSettings() {
-  const [settings, setSettings] = useState(getSettings());
+  const [settings, setSettings] = useState<Settings>(getSettings());
   const [isClearingData, setIsClearingData] = useState(false);
 
-  const handleQualityChange = (value: string) => {
+  const handleQualityChange = (value: 'low' | 'medium' | 'high') => {
     const newSettings = { ...settings, defaultDownloadQuality: value };
     setSettings(newSettings);
     saveSettings(newSettings);
@@ -85,7 +85,7 @@ export function GeneralSettings() {
             <Label htmlFor="quality">Default Download Quality</Label>
             <Select 
               value={settings.defaultDownloadQuality} 
-              onValueChange={handleQualityChange}
+              onValueChange={(value: 'low' | 'medium' | 'high') => handleQualityChange(value)}
             >
               <SelectTrigger id="quality" className="w-full">
                 <SelectValue placeholder="Select quality" />

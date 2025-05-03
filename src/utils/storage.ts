@@ -1,7 +1,7 @@
 
 import { ResourceType, VideoMetadata, PlaylistMetadata } from "@/types/youtube";
 import { v4 as uuid } from "uuid";
-import { ChatMessage, Chat } from "@/types/chat";
+import { Chat, Message } from "@/types/chat";
 import { Note } from "@/types/note";
 
 // Define settings interface
@@ -56,6 +56,12 @@ export const saveSettings = (settings: Settings): void => {
   }
 };
 
+// Extend VideoMetadata to include the timestamps
+interface VideoMetadataWithTimestamps extends VideoMetadata {
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 // Video functions
 export const saveVideoMetadata = (video: VideoMetadata): void => {
   try {
@@ -71,11 +77,12 @@ export const saveVideoMetadata = (video: VideoMetadata): void => {
         updatedAt: Date.now(),
       };
     } else {
-      currentVideos.push({
+      const videoWithTimestamps: VideoMetadataWithTimestamps = {
         ...video,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+      currentVideos.push(videoWithTimestamps);
     }
 
     localStorage.setItem("yougen_videos", JSON.stringify(currentVideos));
@@ -104,6 +111,12 @@ export const getAllVideos = (): VideoMetadata[] => {
   }
 };
 
+// Extend PlaylistMetadata to include the timestamps
+interface PlaylistMetadataWithTimestamps extends PlaylistMetadata {
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 // Playlist functions
 export const savePlaylistMetadata = (
   playlist: PlaylistMetadata
@@ -121,11 +134,12 @@ export const savePlaylistMetadata = (
         updatedAt: Date.now(),
       };
     } else {
-      currentPlaylists.push({
+      const playlistWithTimestamps: PlaylistMetadataWithTimestamps = {
         ...playlist,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+      currentPlaylists.push(playlistWithTimestamps);
     }
 
     localStorage.setItem("yougen_playlists", JSON.stringify(currentPlaylists));
@@ -172,7 +186,6 @@ export const saveChat = (resourceId: string, title: string): string => {
       id: chatId,
       resourceId,
       title,
-      type: ResourceType.VIDEO,
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -190,7 +203,7 @@ export const saveChat = (resourceId: string, title: string): string => {
 
 export const addChatMessage = (
   chatId: string,
-  message: ChatMessage
+  message: Message
 ): void => {
   try {
     const chats = getAllChats();
@@ -226,6 +239,16 @@ export const getChatByResourceId = (resourceId: string): Chat | null => {
   }
 };
 
+export const getChatsByResourceId = (resourceId: string): Chat[] => {
+  try {
+    const chats = getAllChats();
+    return chats.filter((chat) => chat.resourceId === resourceId);
+  } catch (error) {
+    console.error("Error getting chats by resource ID:", error);
+    return [];
+  }
+};
+
 export const getAllChats = (): Chat[] => {
   try {
     const chats = localStorage.getItem("yougen_chats");
@@ -258,7 +281,6 @@ export const saveNote = (note: Omit<Note, "id" | "createdAt" | "updatedAt">): No
       title: "Error note",
       content: "Error creating note",
       resourceId: "",
-      timestamp: 0,
       tags: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),

@@ -1,4 +1,3 @@
-
 import { YoutubeParseResult, ResourceType, YoutubeTimestamp } from '@/types/youtube';
 
 /**
@@ -88,19 +87,21 @@ export function parseTimestamp(timestamp: string): number {
 /**
  * Creates a timestamp object from seconds
  */
-export function createTimestamp(seconds: number): YoutubeTimestamp {
+export const createTimestamp = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
   return {
     seconds,
-    formatted: formatTimestamp(seconds)
+    formatted: `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`,
   };
-}
+};
 
 /**
- * Generates a placeholder thumbnail URL for videos
+ * Gets a placeholder thumbnail URL for a YouTube video
  */
-export function getPlaceholderThumbnail(videoId: string): string {
-  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-}
+export const getPlaceholderThumbnail = () => {
+  return '/placeholder.svg';
+};
 
 /**
  * Formats duration from ISO 8601 format to human readable format

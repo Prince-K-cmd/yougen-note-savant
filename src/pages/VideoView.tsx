@@ -13,11 +13,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
 import { MessageSquare, FileText as NoteIcon, Video, FileText } from "lucide-react";
-import { parseYoutubeUrl } from "@/utils/youtube";
+import { parseYoutubeUrl, createTimestamp } from "@/utils/youtube";
 import { ResourceType } from "@/types/youtube";
-import { getVideoMetadata, saveVideoMetadata, saveNote, getNotesByResourceId, saveChat, getChatsByResourceId } from "@/utils/storage";
+import { 
+  getVideoMetadata, 
+  saveVideoMetadata, 
+  saveNote, 
+  getNotesByResourceId, 
+  saveChat, 
+  getChatByResourceId, 
+  getChatsByResourceId,
+  addChatMessage 
+} from "@/utils/storage";
 import { v4 as uuidv4 } from "uuid";
-import { createTimestamp } from "@/utils/youtube";
 import { TranscriptViewer, TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
 import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
 import { Header } from "@/components/layout/Header";
@@ -139,20 +147,16 @@ export default function VideoView() {
       setIsLoading(false);
 
       // Save chat to storage
-      const chat = getChatsByResourceId(videoId)[0] || {
-        id: uuidv4(),
-        resourceId: videoId,
-        messages: [],
-        title: `Chat about ${videoData.title}`,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      saveChat({
-        ...chat,
-        messages: newMessages,
-        updatedAt: Date.now(),
-      });
+      const chatId = saveChat(videoId, `Chat about ${videoData.title}`);
+      const chat = getChatByResourceId(videoId);
+      
+      if (chat) {
+        newMessages.forEach(msg => {
+          if (!chat.messages.some(m => m.id === msg.id)) {
+            addChatMessage(chat.id, msg);
+          }
+        });
+      }
     }, 1500);
   };
 
@@ -161,18 +165,14 @@ export default function VideoView() {
     content: string;
     videoTimestamp?: { seconds: number; formatted: string };
   }) => {
-    const newNote: Note = {
-      id: uuidv4(),
+    const newNote = saveNote({
       resourceId: videoId,
       title,
       content,
       tags: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
       videoTimestamp,
-    };
+    });
 
-    saveNote(newNote);
     setNotes([...notes, newNote]);
     setIsCreatingNote(false);
   };
