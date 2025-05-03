@@ -179,7 +179,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])  // Changed from [state] to [] to avoid re-subscribing on every state change
 
   return {
     ...state,
