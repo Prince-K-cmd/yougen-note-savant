@@ -1,7 +1,7 @@
 
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Youtube, ArrowLeft, History } from "lucide-react";
+import { Youtube, ArrowLeft, History, Settings } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { 
@@ -101,7 +101,13 @@ export function Header() {
           </Dialog>
 
           <ThemeToggle />
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate('/settings')}
+            className="gap-1"
+          >
+            <Settings className="h-4 w-4" />
             Settings
           </Button>
         </div>
