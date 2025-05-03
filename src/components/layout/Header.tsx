@@ -1,7 +1,7 @@
 
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Youtube, ArrowLeft, History } from "lucide-react";
+import { Youtube, ArrowLeft, History, Settings } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { 
@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllChats, getVideoMetadata } from "@/utils/storage";
+import { SettingsDialog } from "../settings/SettingsDialog";
 
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const chats = getAllChats().sort((a, b) => b.updatedAt - a.updatedAt);
   const isVideoPage = location.pathname.includes('/video/');
 
@@ -101,9 +103,21 @@ export function Header() {
           </Dialog>
 
           <ThemeToggle />
-          <Button variant="outline" size="sm">
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsSettingsOpen(true)}
+            className="gap-1"
+          >
+            <Settings className="h-4 w-4" />
             Settings
           </Button>
+          
+          <SettingsDialog 
+            open={isSettingsOpen}
+            onOpenChange={setIsSettingsOpen}
+          />
         </div>
       </div>
     </header>

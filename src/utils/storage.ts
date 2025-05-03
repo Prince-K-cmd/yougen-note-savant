@@ -150,12 +150,28 @@ interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   defaultDownloadQuality: string;
   fontScale: number;
+  autoplay?: boolean;
+  defaultPlaybackSpeed?: number;
+  defaultVolume?: number;
+  enableNotifications?: boolean;
+  notifyNewSummaries?: boolean;
+  notifyTranscriptReady?: boolean;
+  notifyNotesSaved?: boolean;
+  autosaveNotes?: boolean;
 }
 
 export const defaultSettings: AppSettings = {
   theme: 'system',
   defaultDownloadQuality: 'high',
   fontScale: 1,
+  autoplay: true,
+  defaultPlaybackSpeed: 1.0,
+  defaultVolume: 1.0,
+  enableNotifications: true,
+  notifyNewSummaries: true,
+  notifyTranscriptReady: true,
+  notifyNotesSaved: false,
+  autosaveNotes: true,
 };
 
 export const getSettings = (): AppSettings => {
