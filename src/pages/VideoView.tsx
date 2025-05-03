@@ -1,463 +1,363 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { Header } from "@/components/layout/Header";
+
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { VideoPlayer } from "@/components/youtube/VideoPlayer";
+import { VideoCard } from "@/components/youtube/VideoCard";
+import { NoteEditor } from "@/components/notes/NoteEditor";
+import { NoteCard } from "@/components/notes/NoteCard";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { ChatMessage } from "@/components/chat/ChatMessage";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Youtube, Download, FileText, MessageSquare, Plus, MoreVertical, Send } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { generateSummary, sendMessage } from "@/utils/api";
-import { 
-  getVideoMetadata as getVideoMetadataFromStorage, 
-  saveVideoMetadata, 
-  getChat, 
-  saveChat,
-} from "@/utils/storage";
-import { formatTime } from "@/utils/helpers";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useToast } from "@/components/ui/use-toast";
-import { Badge } from "@/components/ui/badge";
-import { useTheme } from "@/hooks/useTheme";
-import { toast } from "sonner";
-import { getSettings } from "@/utils/storage";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Message } from "@/types/chat";
+import { Note } from "@/types/note";
+import { MessageSquare, FileText as NoteIcon, Video, FileText } from "lucide-react";
+import { parseYoutubeUrl } from "@/utils/youtube";
+import { ResourceType } from "@/types/youtube";
+import { getVideoMetadata, saveVideoMetadata, saveNote, getNotesByResourceId, saveChat, getChatsByResourceId } from "@/utils/storage";
+import { v4 as uuidv4 } from "uuid";
+import { createTimestamp } from "@/utils/youtube";
+import { TranscriptViewer, TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
+import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
+import { Header } from "@/components/layout/Header";
+import { UrlInput } from "@/components/youtube/UrlInput";
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}
-
-interface Chat {
-  id: string;
-  resourceId: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-interface VideoMetadata {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  thumbnailUrl: string;
-  uploadDate: string;
-  duration: number;
-}
-
-const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: { videoId: string, onTimeUpdate: (time: number) => void, autoplay: boolean, muted: boolean }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isMuted, setIsMuted] = useState(muted);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-      onTimeUpdate(video.currentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(video.duration);
-    };
-
-    const handlePlayPause = () => {
-      setIsPlaying(!isPlaying);
-    };
-
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
-    video.addEventListener('play', handlePlayPause);
-    video.addEventListener('pause', handlePlayPause);
-
-    return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('play', handlePlayPause);
-      video.removeEventListener('pause', handlePlayPause);
-    };
-  }, [videoId, onTimeUpdate, isPlaying]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      video.muted = isMuted;
-    }
-  }, [isMuted]);
-
-  const togglePlay = () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const seek = (time: number) => {
-    if (!videoRef.current) return;
-    videoRef.current.currentTime = time;
-    setCurrentTime(time);
-  };
-
-  return (
-    <div className="relative">
-      <video 
-        ref={videoRef} 
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=${autoplay}&origin=${window.location.origin}`}
-        title="YouTube video player" 
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-        allowFullScreen 
-        className="w-full aspect-video"
-        autoPlay={autoplay}
-        muted={isMuted}
-      />
-
-      <div className="absolute bottom-0 left-0 w-full bg-black/50 p-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={togglePlay}>
-            {isPlaying ? 'Pause' : 'Play'}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={toggleMute}>
-            {isMuted ? 'Unmute' : 'Mute'}
-          </Button>
-          <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max={duration}
-          value={currentTime}
-          onChange={(e) => seek(parseFloat(e.target.value))}
-          className="w-32 md:w-64"
-        />
-      </div>
-    </div>
-  );
+// Mock video data for initial UI rendering
+const mockVideoData = {
+  id: "",
+  title: "Sample Video Title",
+  channelTitle: "Sample Channel",
+  channelId: "",
+  description: "This is a sample video description.",
+  publishedAt: new Date().toISOString(),
+  thumbnailUrl: "",
+  duration: "10:30",
+  viewCount: "1,000",
 };
 
 export default function VideoView() {
   const { id } = useParams<{ id: string }>();
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
-  const [chat, setChat] = useState<Chat | null>(null);
-  const [message, setMessage] = useState('');
-  const [summary, setSummary] = useState('');
-  const [currentTimestamp, setCurrentTimestamp] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const { resolvedTheme } = useTheme();
-  const settings = getSettings();
+  const navigate = useNavigate();
+  const [videoId, setVideoId] = useState(id || "");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [videoData, setVideoData] = useState(mockVideoData);
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [activeTab, setActiveTab] = useState("chat");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
 
-  const { data: initialVideoMetadata, isLoading: isMetadataLoading } = useQuery({
-    queryKey: ['videoMetadata', id],
-    queryFn: async () => {
-      if (!id) throw new Error("Video ID is required");
-
-      // First, try to get the video metadata from local storage
-      let metadata = getVideoMetadataFromStorage(id);
-
-      if (metadata) {
-        return metadata;
-      } else {
-        // If not in local storage, fetch it from the API
-        const response = await fetch(`/api/youtube/video-metadata?videoId=${id}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch video metadata: ${response.status} ${response.statusText}`);
-        }
-        metadata = await response.json();
-
-        // Save the fetched metadata to local storage
-        saveVideoMetadata(metadata);
-        return metadata;
-      }
-    },
-    onError: (error) => {
-      console.error("Error fetching video metadata:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load video metadata. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
+  // Load video data and notes
   useEffect(() => {
-    if (initialVideoMetadata) {
-      setVideoMetadata(initialVideoMetadata);
-    }
-  }, [initialVideoMetadata]);
-
-  useEffect(() => {
-    if (id) {
-      const storedChat = getChat(id);
-      if (storedChat) {
-        setChat(storedChat);
-      } else {
-        // Initialize a new chat
-        const newChat: Chat = {
-          id: new Date().getTime().toString(),
-          resourceId: id,
-          title: videoMetadata?.title || 'New Chat',
-          messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-        setChat(newChat);
-        saveChat(newChat);
-      }
-    }
-  }, [id, videoMetadata]);
-
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chat?.messages]);
-
-  const handleTimeUpdate = (time: number) => {
-    setCurrentTimestamp(time);
-  };
-
-  const generateSummaryMutation = useMutation({
-    mutationFn: generateSummary,
-    onSuccess: (data) => {
-      setSummary(data.summary);
-      setIsGenerating(false);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to generate summary. Please try again.",
-        variant: "destructive",
-      });
-      setIsGenerating(false);
-    },
-  });
-
-  const handleGenerateSummary = async () => {
-    if (!id) {
-      toast({
-        title: "Error",
-        description: "Video ID is required to generate a summary.",
-        variant: "destructive",
-      });
+    if (!videoId) {
+      navigate("/");
       return;
     }
 
-    setIsGenerating(true);
-    generateSummaryMutation.mutate({ videoId: id });
-  };
+    // Load video metadata from storage
+    const storedVideo = getVideoMetadata(videoId);
+    if (storedVideo) {
+      setVideoData(storedVideo);
+    } else {
+      // If no stored metadata, use a placeholder with the correct ID
+      setVideoData({
+        ...mockVideoData,
+        id: videoId,
+        thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      });
+      
+      // In a real app, we would fetch the metadata from YouTube API
+      // and save it to storage
+    }
 
-  const sendMessageMutation = useMutation({
-    mutationFn: sendMessage,
-    onSuccess: (data) => {
-      if (!chat) return;
+    // Load notes for this video
+    const videoNotes = getNotesByResourceId(videoId);
+    setNotes(videoNotes);
 
-      const newMessage: Message = {
-        id: new Date().getTime().toString(),
-        role: 'assistant',
-        content: data.content,
+    // Load chat history for this video
+    const videoChats = getChatsByResourceId(videoId);
+    if (videoChats.length > 0) {
+      // Use the most recent chat
+      const latestChat = videoChats.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      setMessages(latestChat.messages);
+    }
+  }, [videoId, navigate]);
+
+  // Load transcript data
+  useEffect(() => {
+    if (!videoId) return;
+    
+    const loadTranscript = async () => {
+      setIsLoadingTranscript(true);
+      try {
+        // Check if we have a cached transcript
+        let videoTranscript = getTranscriptByVideoId(videoId);
+        
+        // If not, generate one
+        if (!videoTranscript) {
+          videoTranscript = await generateTranscript(videoId);
+        }
+        
+        setTranscript(videoTranscript || []);
+      } catch (error) {
+        console.error("Error loading transcript:", error);
+      } finally {
+        setIsLoadingTranscript(false);
+      }
+    };
+    
+    loadTranscript();
+  }, [videoId]);
+
+  const handleSendMessage = (content: string) => {
+    const userMessage: Message = {
+      id: uuidv4(),
+      content,
+      role: "user",
+      timestamp: Date.now(),
+      videoTimestamp: createTimestamp(currentTime),
+    };
+
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setIsLoading(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiMessage: Message = {
+        id: uuidv4(),
+        content: "This is a simulated AI response. In a real app, this would be generated by an AI service like OpenAI or Anthropic.",
+        role: "assistant",
         timestamp: Date.now(),
       };
+      
+      const newMessages = [...updatedMessages, aiMessage];
+      setMessages(newMessages);
+      setIsLoading(false);
 
-      const updatedChat: Chat = {
-        ...chat,
-        messages: [...chat.messages, newMessage],
+      // Save chat to storage
+      const chat = getChatsByResourceId(videoId)[0] || {
+        id: uuidv4(),
+        resourceId: videoId,
+        messages: [],
+        title: `Chat about ${videoData.title}`,
+        createdAt: Date.now(),
         updatedAt: Date.now(),
       };
 
-      setChat(updatedChat);
-      saveChat(updatedChat);
-      setMessage('');
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
+      saveChat({
+        ...chat,
+        messages: newMessages,
+        updatedAt: Date.now(),
       });
-    },
-  });
-
-  const handleSendMessage = () => {
-    if (!message.trim() || !id || !chat) return;
-
-    const userMessage: Message = {
-      id: new Date().getTime().toString(),
-      role: 'user',
-      content: message,
-      timestamp: Date.now(),
-    };
-
-    const updatedChat: Chat = {
-      ...chat,
-      messages: [...chat.messages, userMessage],
-      updatedAt: Date.now(),
-    };
-
-    setChat(updatedChat);
-    saveChat(updatedChat);
-    setMessage('');
-
-    sendMessageMutation.mutate({ videoId: id, message });
+    }, 1500);
   };
 
-  if (isMetadataLoading) {
-    return <div>Loading...</div>;
-  }
+  const handleSaveNote = ({ title, content, videoTimestamp }: { 
+    title: string;
+    content: string;
+    videoTimestamp?: { seconds: number; formatted: string };
+  }) => {
+    const newNote: Note = {
+      id: uuidv4(),
+      resourceId: videoId,
+      title,
+      content,
+      tags: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      videoTimestamp,
+    };
 
-  if (!videoMetadata) {
-    return <div>Video not found</div>;
-  }
+    saveNote(newNote);
+    setNotes([...notes, newNote]);
+    setIsCreatingNote(false);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    setNotes(notes.filter((note) => note.id !== noteId));
+    // In a real app, we would also delete from storage
+  };
+
+  const handleTimestampClick = (seconds: number) => {
+    if (document.querySelector('iframe')) {
+      // Access the YouTube iframe player
+      const iframe = document.querySelector('iframe');
+      const player = iframe?.contentWindow;
+      
+      // Send a postMessage to seek to the specified time
+      player?.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'seekTo',
+        args: [seconds, true]
+      }), '*');
+    }
+  };
+
+  const handleUrlSubmit = (parseResult: { type: string; id: string; url: string }) => {
+    if (parseResult.type === ResourceType.VIDEO) {
+      navigate(`/video/${parseResult.id}`);
+    } else if (parseResult.type === ResourceType.PLAYLIST) {
+      navigate(`/playlist/${parseResult.id}`);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-
-      <main className="flex-1 container grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 py-6">
-        <div className="flex flex-col gap-4">
-          <VideoPlayer 
-            videoId={id} 
-            onTimeUpdate={handleTimeUpdate}
-            autoplay={settings.autoplay}
-            muted={settings.muteByDefault}
-          />
-
-          <div className="flex justify-between items-start">
+      
+      <div className="container py-6 px-4 sm:px-6 flex-grow">
+        <div className="mb-4">
+          <UrlInput onSubmit={handleUrlSubmit} />
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Video Player Section */}
+          <div className="lg:col-span-2 space-y-4">
+            <VideoPlayer
+              videoId={videoId}
+              onTimeUpdate={setCurrentTime}
+              onReady={() => console.log("Video ready")}
+            />
+            
             <div>
-              <h1 className="text-2xl font-bold">{videoMetadata.title}</h1>
-              <p className="text-sm text-muted-foreground">
-                By {videoMetadata.author} | Uploaded {videoMetadata.uploadDate}
-              </p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Generate Summary
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <p className="text-muted-foreground">{videoMetadata.description}</p>
-          <Separator />
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xl font-bold">AI Chat</h2>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              >
-                {isSidebarOpen ? 'Hide' : 'Show'} Chat
-                <MessageSquare className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-
-            {isSidebarOpen && (
-              <div className="flex flex-col gap-4">
-                <div 
-                  className="h-[400px] p-4 rounded-md bg-secondary overflow-y-auto"
-                  ref={chatContainerRef}
-                >
-                  {chat?.messages.map((msg) => (
-                    <div key={msg.id} className={`mb-2 p-3 rounded-md ${msg.role === 'user' ? 'bg-muted' : 'bg-accent'}`}>
-                      <div className="text-sm text-muted-foreground">
-                        {msg.role === 'user' ? 'You' : 'YouGen'}
-                      </div>
-                      <p>{msg.content}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Ask a question about the video..."
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  <Button onClick={handleSendMessage}>
-                    Send
-                    <Send className="h-4 w-4 ml-2" />
+              <h2 className="text-2xl font-bold tracking-tight">{videoData.title}</h2>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-sm text-muted-foreground">{videoData.channelTitle}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    <Video className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsCreatingNote(true)}>
+                    <NoteIcon className="h-4 w-4 mr-1" />
+                    Take Note
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Summary Section */}
-        <div className="hidden lg:flex flex-col gap-4">
-          <h2 className="text-xl font-bold">Summary</h2>
-          <div className="bg-secondary p-4 rounded-md">
-            {isGenerating ? (
-              <div>Generating summary...</div>
-            ) : (
-              <>
-                <div className="flex justify-end">
-                  <Badge className="mb-2">{formatTime(currentTimestamp)}</Badge>
-                </div>
-                {summary ? (
-                  <ScrollArea className="h-[400px]">
-                    <p className="text-sm">{summary}</p>
-                  </ScrollArea>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No summary generated yet.
-                  </div>
-                )}
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4"
-                  onClick={handleGenerateSummary}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Summary'}
-                </Button>
-              </>
+            {/* Create Note Form */}
+            {isCreatingNote && (
+              <div className="p-4 border rounded-lg bg-card">
+                <h3 className="text-lg font-medium mb-2">Create a Note</h3>
+                <NoteEditor
+                  currentVideoTime={currentTime}
+                  onSave={handleSaveNote}
+                  onCancel={() => setIsCreatingNote(false)}
+                />
+              </div>
             )}
+
+            <Separator className="my-6" />
+
+            {/* Video Description */}
+            <div>
+              <h3 className="text-lg font-medium mb-2">Description</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {videoData.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs for Chat, Notes, and Transcript */}
+          <div className="h-[calc(100vh-16rem)] flex flex-col">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="chat" className="flex items-center gap-1">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Chat</span>
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="flex items-center gap-1">
+                  <NoteIcon className="h-4 w-4" />
+                  <span>Notes</span>
+                </TabsTrigger>
+                <TabsTrigger value="transcript" className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  <span>Transcript</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Chat Tab */}
+              <TabsContent value="chat" className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="flex-1 overflow-y-auto">
+                  {messages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mb-2" />
+                      <h3 className="text-lg font-medium">No messages yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Start a conversation about this video with our AI assistant.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {messages.map((message) => (
+                        <ChatMessage 
+                          key={message.id} 
+                          message={message} 
+                          onTimestampClick={message.videoTimestamp ? () => handleTimestampClick(message.videoTimestamp!.seconds) : undefined}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4 mt-auto">
+                  <ChatInput 
+                    onSend={handleSendMessage} 
+                    isLoading={isLoading}
+                    placeholder="Ask about this video..."
+                  />
+                </div>
+              </TabsContent>
+              
+              {/* Notes Tab */}
+              <TabsContent value="notes" className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="p-4 flex justify-between items-center">
+                  <h3 className="font-medium">Your Notes</h3>
+                  <Button size="sm" onClick={() => setIsCreatingNote(true)}>
+                    New Note
+                  </Button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
+                  {notes.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                      <NoteIcon className="h-12 w-12 text-muted-foreground mb-2" />
+                      <h3 className="text-lg font-medium">No notes yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Create notes to save important information from this video.
+                      </p>
+                    </div>
+                  ) : (
+                    notes.map((note) => (
+                      <NoteCard
+                        key={note.id}
+                        note={note}
+                        onDelete={() => handleDeleteNote(note.id)}
+                        onTimestampClick={note.videoTimestamp ? () => handleTimestampClick(note.videoTimestamp!.seconds) : undefined}
+                      />
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+              
+              {/* Transcript Tab */}
+              <TabsContent value="transcript" className="flex-1 flex flex-col h-full overflow-hidden">
+                <TranscriptViewer
+                  videoId={videoId}
+                  transcript={transcript}
+                  onSegmentClick={handleTimestampClick}
+                  isLoading={isLoadingTranscript}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

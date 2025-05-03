@@ -1,175 +1,167 @@
-import { v4 as uuidv4 } from 'uuid';
 
-// Types
-export enum ResourceType {
-  VIDEO = 'video',
-  PLAYLIST = 'playlist',
-}
+import { Chat } from '@/types/chat';
+import { Note } from '@/types/note';
+import { VideoMetadata, PlaylistMetadata } from '@/types/youtube';
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: number;
-}
-
-export interface Chat {
-  id: string;
-  resourceId: string;
-  title: string;
-  messages: ChatMessage[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface VideoMetadata {
-  id: string;
-  title: string;
-  author: string;
-  viewCount: number;
-  uploadDate: string;
-  thumbnailUrl: string;
-  description: string;
-}
-
-export interface PlaylistMetadata {
-  id: string;
-  title: string;
-  author: string;
-  videoCount: number;
-  thumbnailUrl: string;
-  description: string;
-}
-
-// =========================
-// Chat Storage
-// =========================
-
-const CHATS_KEY = 'chats';
-
-// Initialize chats in localStorage if it doesn't exist
-if (!localStorage.getItem(CHATS_KEY)) {
-  localStorage.setItem(CHATS_KEY, JSON.stringify([]));
-}
-
-export const createChat = (resourceId: string, title: string): Chat => {
-  const newChat: Chat = {
-    id: uuidv4(),
-    resourceId: resourceId,
-    title: title,
-    messages: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-
-  const chats = getAllChats();
-  localStorage.setItem(CHATS_KEY, JSON.stringify([...chats, newChat]));
-  return newChat;
+// Storage keys
+const STORAGE_KEYS = {
+  VIDEOS: 'yougen_videos',
+  PLAYLISTS: 'yougen_playlists',
+  CHATS: 'yougen_chats',
+  NOTES: 'yougen_notes',
+  SETTINGS: 'yougen_settings',
 };
 
-export const getChat = (chatId: string): Chat | undefined => {
-  const chats = getAllChats();
-  return chats.find((chat) => chat.id === chatId);
-};
-
-export const getAllChats = (): Chat[] => {
-  const chatsString = localStorage.getItem(CHATS_KEY);
-  return chatsString ? JSON.parse(chatsString) : [];
-};
-
-export const updateChat = (chatId: string, updates: Partial<Chat>): Chat | undefined => {
-  const chats = getAllChats();
-  const chatIndex = chats.findIndex((chat) => chat.id === chatId);
-
-  if (chatIndex === -1) {
-    console.warn(`Chat with id ${chatId} not found`);
-    return undefined;
+// Helper functions
+const getItem = <T>(key: string, defaultValue: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error retrieving data for key ${key}:`, error);
+    return defaultValue;
   }
-
-  const updatedChat = { ...chats[chatIndex], ...updates, updatedAt: Date.now() };
-  chats[chatIndex] = updatedChat;
-  localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
-  return updatedChat;
 };
 
-export const deleteChat = (chatId: string): void => {
-  const chats = getAllChats();
-  const updatedChats = chats.filter((chat) => chat.id !== chatId);
-  localStorage.setItem(CHATS_KEY, JSON.stringify(updatedChats));
+const setItem = <T>(key: string, value: T): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Error storing data for key ${key}:`, error);
+  }
 };
 
-// =========================
-// Video Metadata Storage
-// =========================
-
-const VIDEOS_KEY = 'videos';
-
-// Initialize videos in localStorage if it doesn't exist
-if (!localStorage.getItem(VIDEOS_KEY)) {
-  localStorage.setItem(VIDEOS_KEY, JSON.stringify([]));
-}
-
-export const saveVideoMetadata = (metadata: VideoMetadata): void => {
-  const videos = getAllVideos();
-  localStorage.setItem(VIDEOS_KEY, JSON.stringify([...videos, metadata]));
+// Video metadata storage
+export const saveVideoMetadata = (video: VideoMetadata): void => {
+  const videos = getItem<VideoMetadata[]>(STORAGE_KEYS.VIDEOS, []);
+  const existingIndex = videos.findIndex(v => v.id === video.id);
+  
+  if (existingIndex >= 0) {
+    videos[existingIndex] = video;
+  } else {
+    videos.push(video);
+  }
+  
+  setItem(STORAGE_KEYS.VIDEOS, videos);
 };
 
-export const getVideoMetadata = (videoId: string): VideoMetadata | undefined => {
-  const videos = getAllVideos();
-  return videos.find((video) => video.id === videoId);
+export const getVideoMetadata = (id: string): VideoMetadata | undefined => {
+  const videos = getItem<VideoMetadata[]>(STORAGE_KEYS.VIDEOS, []);
+  return videos.find(video => video.id === id);
 };
 
 export const getAllVideos = (): VideoMetadata[] => {
-  const videosString = localStorage.getItem(VIDEOS_KEY);
-  return videosString ? JSON.parse(videosString) : [];
+  return getItem<VideoMetadata[]>(STORAGE_KEYS.VIDEOS, []);
 };
 
-// =========================
-// Playlist Metadata Storage
-// =========================
-
-const PLAYLISTS_KEY = 'playlists';
-
-// Initialize playlists in localStorage if it doesn't exist
-if (!localStorage.getItem(PLAYLISTS_KEY)) {
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify([]));
-}
-
-export const savePlaylistMetadata = (metadata: PlaylistMetadata): void => {
-  const playlists = getAllPlaylists();
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify([...playlists, metadata]));
+// Playlist metadata storage
+export const savePlaylistMetadata = (playlist: PlaylistMetadata): void => {
+  const playlists = getItem<PlaylistMetadata[]>(STORAGE_KEYS.PLAYLISTS, []);
+  const existingIndex = playlists.findIndex(p => p.id === playlist.id);
+  
+  if (existingIndex >= 0) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  setItem(STORAGE_KEYS.PLAYLISTS, playlists);
 };
 
-export const getPlaylistMetadata = (playlistId: string): PlaylistMetadata | undefined => {
-  const playlists = getAllPlaylists();
-  return playlists.find((playlist) => playlist.id === playlistId);
+export const getPlaylistMetadata = (id: string): PlaylistMetadata | undefined => {
+  const playlists = getItem<PlaylistMetadata[]>(STORAGE_KEYS.PLAYLISTS, []);
+  return playlists.find(playlist => playlist.id === id);
 };
 
 export const getAllPlaylists = (): PlaylistMetadata[] => {
-  const playlistsString = localStorage.getItem(PLAYLISTS_KEY);
-  return playlistsString ? JSON.parse(playlistsString) : [];
+  return getItem<PlaylistMetadata[]>(STORAGE_KEYS.PLAYLISTS, []);
 };
 
-// Default settings
-const defaultSettings = {
-  theme: 'system' as 'light' | 'dark' | 'system',
-  autoplay: true,
-  muteByDefault: false,
-  defaultQuality: '720p',
-  downloadFormat: 'MP4',
-  downloadSubtitles: true,
-  downloadPath: '',
-  enableHotkeys: true,
-  enableNotifications: true
+// Chat storage
+export const saveChat = (chat: Chat): void => {
+  const chats = getItem<Chat[]>(STORAGE_KEYS.CHATS, []);
+  const existingIndex = chats.findIndex(c => c.id === chat.id);
+  
+  if (existingIndex >= 0) {
+    chats[existingIndex] = chat;
+  } else {
+    chats.push(chat);
+  }
+  
+  setItem(STORAGE_KEYS.CHATS, chats);
 };
 
-// Get settings from localStorage or return defaults
-export const getSettings = () => {
-  const settings = localStorage.getItem('settings');
-  return settings ? { ...defaultSettings, ...JSON.parse(settings) } : defaultSettings;
+export const getChat = (id: string): Chat | undefined => {
+  const chats = getItem<Chat[]>(STORAGE_KEYS.CHATS, []);
+  return chats.find(chat => chat.id === id);
 };
 
-// Save settings to localStorage
-export const saveSettings = (settings: any) => {
-  localStorage.setItem('settings', JSON.stringify(settings));
+export const getChatsByResourceId = (resourceId: string): Chat[] => {
+  const chats = getItem<Chat[]>(STORAGE_KEYS.CHATS, []);
+  return chats.filter(chat => chat.resourceId === resourceId);
+};
+
+export const getAllChats = (): Chat[] => {
+  return getItem<Chat[]>(STORAGE_KEYS.CHATS, []);
+};
+
+export const deleteChat = (id: string): void => {
+  const chats = getItem<Chat[]>(STORAGE_KEYS.CHATS, []);
+  const filteredChats = chats.filter(chat => chat.id !== id);
+  setItem(STORAGE_KEYS.CHATS, filteredChats);
+};
+
+// Note storage
+export const saveNote = (note: Note): void => {
+  const notes = getItem<Note[]>(STORAGE_KEYS.NOTES, []);
+  const existingIndex = notes.findIndex(n => n.id === note.id);
+  
+  if (existingIndex >= 0) {
+    notes[existingIndex] = note;
+  } else {
+    notes.push(note);
+  }
+  
+  setItem(STORAGE_KEYS.NOTES, notes);
+};
+
+export const getNote = (id: string): Note | undefined => {
+  const notes = getItem<Note[]>(STORAGE_KEYS.NOTES, []);
+  return notes.find(note => note.id === id);
+};
+
+export const getNotesByResourceId = (resourceId: string): Note[] => {
+  const notes = getItem<Note[]>(STORAGE_KEYS.NOTES, []);
+  return notes.filter(note => note.resourceId === resourceId);
+};
+
+export const getAllNotes = (): Note[] => {
+  return getItem<Note[]>(STORAGE_KEYS.NOTES, []);
+};
+
+export const deleteNote = (id: string): void => {
+  const notes = getItem<Note[]>(STORAGE_KEYS.NOTES, []);
+  const filteredNotes = notes.filter(note => note.id !== id);
+  setItem(STORAGE_KEYS.NOTES, filteredNotes);
+};
+
+// Settings
+interface AppSettings {
+  theme: 'light' | 'dark' | 'system';
+  defaultDownloadQuality: string;
+  fontScale: number;
+}
+
+export const defaultSettings: AppSettings = {
+  theme: 'system',
+  defaultDownloadQuality: 'high',
+  fontScale: 1,
+};
+
+export const getSettings = (): AppSettings => {
+  return getItem<AppSettings>(STORAGE_KEYS.SETTINGS, defaultSettings);
+};
+
+export const saveSettings = (settings: AppSettings): void => {
+  setItem(STORAGE_KEYS.SETTINGS, settings);
 };
