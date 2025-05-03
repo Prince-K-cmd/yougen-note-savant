@@ -9,7 +9,8 @@ import { VideoCard } from "@/components/youtube/VideoCard";
 import { PlaylistCard } from "@/components/youtube/PlaylistCard";
 import { useToast } from "@/components/ui/use-toast";
 import { extractVideoId, extractPlaylistId } from "@/hooks/useYoutubeUrl";
-import { getAllVideos, getAllPlaylists, VideoMetadata, PlaylistMetadata } from "@/utils/storage";
+import { getAllVideos, getAllPlaylists } from "@/utils/storage";
+import { VideoMetadata, PlaylistMetadata } from "@/types/youtube";
 
 export default function Index() {
   const recentVideos = getAllVideos();
@@ -79,7 +80,10 @@ export default function Index() {
                     description: video.description,
                     thumbnailUrl: video.thumbnailUrl,
                     channelTitle: video.author,
-                    publishedAt: video.uploadDate
+                    publishedAt: video.uploadDate,
+                    duration: video.duration,
+                    viewCount: video.viewCount,
+                    channelId: video.channelId
                   }} />
                 ))}
               </div>
@@ -100,8 +104,10 @@ export default function Index() {
                     description: playlist.description,
                     thumbnailUrl: playlist.thumbnailUrl,
                     channelTitle: playlist.author,
-                    publishedAt: '',
-                    itemCount: playlist.videoCount
+                    publishedAt: playlist.publishedAt,
+                    itemCount: playlist.videoCount,
+                    channelId: playlist.channelId,
+                    videos: playlist.videos
                   }} />
                 ))}
               </div>

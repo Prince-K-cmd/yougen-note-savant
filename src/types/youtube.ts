@@ -9,6 +9,8 @@ export interface VideoMetadata {
   thumbnailUrl: string;
   duration: string;
   viewCount: string;
+  author?: string;
+  uploadDate?: string;
 }
 
 export interface PlaylistMetadata {
@@ -20,6 +22,8 @@ export interface PlaylistMetadata {
   publishedAt: string;
   thumbnailUrl: string;
   itemCount: number;
+  videoCount?: number;
+  author?: string;
   videos: VideoMetadata[];
 }
 

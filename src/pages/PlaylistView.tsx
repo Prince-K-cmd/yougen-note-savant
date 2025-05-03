@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { getPlaylistMetadata, savePlaylist, saveVideo } from "@/utils/storage";
 import { VideoCard } from "@/components/youtube/VideoCard";
+import { VideoMetadata } from "@/types/youtube";
+import { fetchVideoDetails } from "@/utils/youtube";
 
 // A simple placeholder component for PlaylistView
 // This would be expanded with proper functionality in a real implementation
@@ -27,18 +29,61 @@ export default function PlaylistView() {
         } else {
           // Fetch from API (in a real app)
           // For now, just create a placeholder
+          // Creating sample videos with proper types
+          const sampleVideos: VideoMetadata[] = [
+            {
+              id: "video1",
+              title: "Video 1",
+              description: "Sample video description",
+              thumbnailUrl: "https://via.placeholder.com/480x360",
+              author: "YouTube Creator",
+              uploadDate: new Date().toISOString(),
+              viewCount: "1000",
+              channelId: "channel123",
+              channelTitle: "YouTube Creator",
+              publishedAt: new Date().toISOString(),
+              duration: "5:00"
+            },
+            {
+              id: "video2",
+              title: "Video 2",
+              description: "Sample video description",
+              thumbnailUrl: "https://via.placeholder.com/480x360",
+              author: "YouTube Creator",
+              uploadDate: new Date().toISOString(),
+              viewCount: "2000",
+              channelId: "channel123",
+              channelTitle: "YouTube Creator",
+              publishedAt: new Date().toISOString(),
+              duration: "7:30"
+            },
+            {
+              id: "video3",
+              title: "Video 3",
+              description: "Sample video description",
+              thumbnailUrl: "https://via.placeholder.com/480x360",
+              author: "YouTube Creator",
+              uploadDate: new Date().toISOString(),
+              viewCount: "1500",
+              channelId: "channel123",
+              channelTitle: "YouTube Creator",
+              publishedAt: new Date().toISOString(),
+              duration: "3:45"
+            }
+          ];
+          
           const placeholderPlaylist = {
             id,
             title: `Playlist ${id}`,
             description: "This is a placeholder for the playlist view. In a real app, this would fetch and display actual playlist data.",
             thumbnailUrl: "https://via.placeholder.com/480x360",
             author: "YouTube Creator",
-            videoCount: 5,
-            videos: [
-              { id: "video1", title: "Video 1", thumbnailUrl: "https://via.placeholder.com/480x360" },
-              { id: "video2", title: "Video 2", thumbnailUrl: "https://via.placeholder.com/480x360" },
-              { id: "video3", title: "Video 3", thumbnailUrl: "https://via.placeholder.com/480x360" },
-            ]
+            channelTitle: "YouTube Creator",
+            channelId: "channel123",
+            videoCount: sampleVideos.length,
+            itemCount: sampleVideos.length,
+            publishedAt: new Date().toISOString(),
+            videos: sampleVideos
           };
           
           setPlaylist(placeholderPlaylist);
@@ -47,16 +92,8 @@ export default function PlaylistView() {
           savePlaylist(placeholderPlaylist);
           
           // Save videos too
-          placeholderPlaylist.videos.forEach((video: any) => {
-            saveVideo({
-              id: video.id,
-              title: video.title,
-              description: "Sample video description",
-              author: "YouTube Creator",
-              thumbnailUrl: video.thumbnailUrl,
-              uploadDate: new Date().toISOString(),
-              viewCount: 1000
-            });
+          sampleVideos.forEach(video => {
+            saveVideo(video);
           });
         }
       } catch (error) {
@@ -113,15 +150,8 @@ export default function PlaylistView() {
         
         {playlist.videos && playlist.videos.length > 0 ? (
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {playlist.videos.map((video: any, index: number) => (
-              <VideoCard key={video.id} video={{
-                id: video.id,
-                title: video.title || `Video ${index + 1}`,
-                description: video.description || "No description available",
-                thumbnailUrl: video.thumbnailUrl,
-                channelTitle: playlist.author,
-                publishedAt: new Date().toISOString()
-              }} />
+            {playlist.videos.map((video: VideoMetadata) => (
+              <VideoCard key={video.id} video={video} />
             ))}
           </div>
         ) : (

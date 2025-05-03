@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
-import { parseYoutubeUrl } from '@/utils/youtube';
 import { YoutubeParseResult } from '@/types/youtube';
+import { parseYoutubeUrl } from '@/utils/youtube';
 
 export function useYoutubeUrl() {
   const [url, setUrl] = useState<string>('');
@@ -51,3 +51,6 @@ export function useYoutubeUrl() {
     clearUrl
   };
 }
+
+// Export the extraction functions for convenience
+export { extractVideoId, extractPlaylistId } from '@/utils/youtube';
