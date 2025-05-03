@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Types
@@ -30,6 +31,10 @@ export interface VideoMetadata {
   uploadDate: string;
   thumbnailUrl: string;
   description: string;
+  channelTitle?: string;
+  channelId?: string;
+  publishedAt?: string;
+  duration?: number;
 }
 
 export interface PlaylistMetadata {
@@ -39,6 +44,11 @@ export interface PlaylistMetadata {
   videoCount: number;
   thumbnailUrl: string;
   description: string;
+  channelTitle?: string;
+  channelId?: string;
+  publishedAt?: string;
+  itemCount?: number;
+  videos?: string[];
 }
 
 // =========================
@@ -98,6 +108,22 @@ export const deleteChat = (chatId: string): void => {
   localStorage.setItem(CHATS_KEY, JSON.stringify(updatedChats));
 };
 
+// Add the missing saveChat function
+export const saveChat = (chat: Chat): void => {
+  const chats = getAllChats();
+  const existingChatIndex = chats.findIndex((c) => c.id === chat.id);
+  
+  if (existingChatIndex !== -1) {
+    // Update existing chat
+    chats[existingChatIndex] = chat;
+  } else {
+    // Add new chat
+    chats.push(chat);
+  }
+  
+  localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
+};
+
 // =========================
 // Video Metadata Storage
 // =========================
@@ -148,6 +174,33 @@ export const getPlaylistMetadata = (playlistId: string): PlaylistMetadata | unde
 export const getAllPlaylists = (): PlaylistMetadata[] => {
   const playlistsString = localStorage.getItem(PLAYLISTS_KEY);
   return playlistsString ? JSON.parse(playlistsString) : [];
+};
+
+// Added helper functions for PlaylistView.tsx
+export const saveVideo = (video: VideoMetadata): void => {
+  const videos = getAllVideos();
+  const existingIndex = videos.findIndex((v) => v.id === video.id);
+  
+  if (existingIndex >= 0) {
+    videos[existingIndex] = video;
+  } else {
+    videos.push(video);
+  }
+  
+  localStorage.setItem(VIDEOS_KEY, JSON.stringify(videos));
+};
+
+export const savePlaylist = (playlist: PlaylistMetadata): void => {
+  const playlists = getAllPlaylists();
+  const existingIndex = playlists.findIndex((p) => p.id === playlist.id);
+  
+  if (existingIndex >= 0) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 };
 
 // Default settings
