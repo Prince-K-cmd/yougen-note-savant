@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash, Download, Check } from "lucide-react";
+import { Trash, Download, Check, Settings, Save } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,10 +20,20 @@ import {
 } from "@/components/ui/select";
 import { getSettings, saveSettings, Settings } from "@/utils/storage";
 import { Switch } from "@/components/ui/switch";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function GeneralSettings() {
   const [settings, setSettings] = useState<Settings>(getSettings());
   const [isClearingData, setIsClearingData] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleQualityChange = (value: 'low' | 'medium' | 'high') => {
     const newSettings = { ...settings, defaultDownloadQuality: value };
@@ -36,6 +46,7 @@ export function GeneralSettings() {
     const newSettings = { ...settings, autosaveNotes: checked };
     setSettings(newSettings);
     saveSettings(newSettings);
+    toast.success(`Notes autosave ${checked ? 'enabled' : 'disabled'}`);
   };
 
   const clearAllData = () => {
@@ -75,14 +86,17 @@ export function GeneralSettings() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Preferences</CardTitle>
+          <CardTitle className="flex items-center">
+            <Settings className="mr-2 h-5 w-5 text-brand-purple-light" />
+            Preferences
+          </CardTitle>
           <CardDescription>
             Configure general application settings
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="quality">Default Download Quality</Label>
+        <CardContent className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="quality" className="text-base">Default Download Quality</Label>
             <Select 
               value={settings.defaultDownloadQuality} 
               onValueChange={(value: 'low' | 'medium' | 'high') => handleQualityChange(value)}
@@ -91,58 +105,88 @@ export function GeneralSettings() {
                 <SelectValue placeholder="Select quality" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="low">Low (360p)</SelectItem>
+                <SelectItem value="medium">Medium (720p)</SelectItem>
+                <SelectItem value="high">High (1080p)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="autosave-notes" 
-              checked={settings.autosaveNotes || false}
-              onCheckedChange={handleAutosaveToggle}
-            />
-            <Label htmlFor="autosave-notes">Autosave notes</Label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="autosave-notes" 
+                checked={settings.autosaveNotes || false}
+                onCheckedChange={handleAutosaveToggle}
+              />
+              <Label htmlFor="autosave-notes" className="flex items-center text-base">
+                <Save className="mr-2 h-5 w-5" />
+                Autosave notes
+              </Label>
+            </div>
           </div>
         </CardContent>
       </Card>
       
       <Card>
         <CardHeader>
-          <CardTitle>Data Management</CardTitle>
+          <CardTitle className="flex items-center">
+            <Trash className="mr-2 h-5 w-5 text-destructive" />
+            Data Management
+          </CardTitle>
           <CardDescription>
             Export your data or reset the application
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col space-y-3">
+        <CardContent className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
           <Button 
             variant="outline" 
-            className="w-full"
+            className="w-full flex items-center justify-center"
             onClick={exportAllData}
           >
             <Download className="mr-2 h-4 w-4" />
             Export All Data
           </Button>
-          <Button 
-            variant="destructive" 
-            className="w-full"
-            onClick={clearAllData}
-            disabled={isClearingData}
-          >
-            {isClearingData ? (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                Clearing...
-              </>
-            ) : (
-              <>
-                <Trash className="mr-2 h-4 w-4" />
-                Clear All Data
-              </>
-            )}
-          </Button>
+          <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className="w-full flex items-center justify-center"
+                disabled={isClearingData}
+              >
+                {isClearingData ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Clearing...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="mr-2 h-4 w-4" />
+                    Clear All Data
+                  </>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Are you sure?</DialogTitle>
+                <DialogDescription>
+                  This action will delete all your saved data including videos, notes, and preferences. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={() => {
+                  clearAllData();
+                  setShowConfirmDialog(false);
+                }}>
+                  Yes, clear all data
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
     </div>

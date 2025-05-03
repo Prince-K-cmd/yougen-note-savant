@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import VideoView from "./pages/VideoView";
 import PlaylistView from "./pages/PlaylistView";
 import NotFound from "./pages/NotFound";
+import "./AppStyles.css";
 
 const queryClient = new QueryClient();
 

@@ -47,6 +47,10 @@ export function useTheme() {
     // Update settings
     const settings = getSettings();
     saveSettings({ ...settings, theme });
+    
+    // Apply font size from settings
+    const fontScale = settings.fontScale || 1.0;
+    document.documentElement.style.fontSize = `${fontScale * 100}%`;
   }, [theme, resolvedTheme]);
 
   return {
