@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Download, FileText, MessageSquare, Plus, MoreVertical, Send } from "lucide-react";
+import { Youtube, Download, FileText, MessageSquare, Plus, MoreVertical, Send } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { generateSummary, sendMessage } from "@/utils/api";
 import { 
@@ -13,8 +14,6 @@ import {
   saveVideoMetadata, 
   getChat, 
   saveChat,
-  Chat,
-  ChatMessage
 } from "@/utils/storage";
 import { formatTime } from "@/utils/helpers";
 import { 
@@ -22,21 +21,40 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
 import { getSettings } from "@/utils/storage";
 
-interface VideoPlayerProps {
-  videoId: string | undefined;
-  onTimeUpdate: (time: number) => void;
-  autoplay: boolean;
-  muted: boolean;
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
 }
 
-const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: VideoPlayerProps) => {
+interface Chat {
+  id: string;
+  resourceId: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface VideoMetadata {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  thumbnailUrl: string;
+  uploadDate: string;
+  duration: number;
+}
+
+const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: { videoId: string, onTimeUpdate: (time: number) => void, autoplay: boolean, muted: boolean }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -105,11 +123,13 @@ const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: VideoPlayerProp
     <div className="relative">
       <video 
         ref={videoRef} 
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=${autoplay ? 1 : 0}&origin=${window.location.origin}`}
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=${autoplay}&origin=${window.location.origin}`}
+        title="YouTube video player" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+        allowFullScreen 
         className="w-full aspect-video"
         autoPlay={autoplay}
         muted={isMuted}
-        controls
       />
 
       <div className="absolute bottom-0 left-0 w-full bg-black/50 p-2 flex items-center justify-between">
@@ -135,23 +155,10 @@ const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: VideoPlayerProp
   );
 };
 
-// Adapter for chat message types - updating to match the new ChatMessage interface
-const adaptChatMessages = (chat: Chat) => {
-  return {
-    ...chat,
-    messages: chat.messages // No need to transform since they already match our interface
-  };
-};
-
-// Adapter to convert back to storage format (already matches our interface, so no transformation needed)
-const adaptToStorageChat = (chat: any) => {
-  return chat; // No transformation needed as the types now match
-};
-
 export default function VideoView() {
   const { id } = useParams<{ id: string }>();
-  const [videoMetadata, setVideoMetadata] = useState<any>(null);
-  const [chat, setChat] = useState<any>(null);
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
+  const [chat, setChat] = useState<Chat | null>(null);
   const [message, setMessage] = useState('');
   const [summary, setSummary] = useState('');
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
@@ -185,16 +192,14 @@ export default function VideoView() {
         return metadata;
       }
     },
-    meta: {
-      onError: (error: any) => {
-        console.error("Error fetching video metadata:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load video metadata. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }
+    onError: (error) => {
+      console.error("Error fetching video metadata:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load video metadata. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -207,10 +212,10 @@ export default function VideoView() {
     if (id) {
       const storedChat = getChat(id);
       if (storedChat) {
-        setChat(adaptChatMessages(storedChat));
+        setChat(storedChat);
       } else {
         // Initialize a new chat
-        const newChat = {
+        const newChat: Chat = {
           id: new Date().getTime().toString(),
           resourceId: id,
           title: videoMetadata?.title || 'New Chat',
@@ -270,21 +275,21 @@ export default function VideoView() {
     onSuccess: (data) => {
       if (!chat) return;
 
-      const newMessage = {
+      const newMessage: Message = {
         id: new Date().getTime().toString(),
         role: 'assistant',
         content: data.content,
         timestamp: Date.now(),
       };
 
-      const updatedChat = {
+      const updatedChat: Chat = {
         ...chat,
         messages: [...chat.messages, newMessage],
         updatedAt: Date.now(),
       };
 
       setChat(updatedChat);
-      saveChat(adaptToStorageChat(updatedChat));
+      saveChat(updatedChat);
       setMessage('');
     },
     onError: () => {
@@ -299,21 +304,21 @@ export default function VideoView() {
   const handleSendMessage = () => {
     if (!message.trim() || !id || !chat) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: new Date().getTime().toString(),
       role: 'user',
       content: message,
       timestamp: Date.now(),
     };
 
-    const updatedChat = {
+    const updatedChat: Chat = {
       ...chat,
       messages: [...chat.messages, userMessage],
       updatedAt: Date.now(),
     };
 
     setChat(updatedChat);
-    saveChat(adaptToStorageChat(updatedChat));
+    saveChat(updatedChat);
     setMessage('');
 
     sendMessageMutation.mutate({ videoId: id, message });
@@ -358,7 +363,7 @@ export default function VideoView() {
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleGenerateSummary}>
+                <DropdownMenuItem>
                   <FileText className="h-4 w-4 mr-2" />
                   Generate Summary
                 </DropdownMenuItem>
@@ -388,7 +393,7 @@ export default function VideoView() {
                   className="h-[400px] p-4 rounded-md bg-secondary overflow-y-auto"
                   ref={chatContainerRef}
                 >
-                  {chat?.messages.map((msg: any) => (
+                  {chat?.messages.map((msg) => (
                     <div key={msg.id} className={`mb-2 p-3 rounded-md ${msg.role === 'user' ? 'bg-muted' : 'bg-accent'}`}>
                       <div className="text-sm text-muted-foreground">
                         {msg.role === 'user' ? 'You' : 'YouGen'}

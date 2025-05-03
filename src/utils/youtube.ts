@@ -1,94 +1,113 @@
 
-import { YoutubeParseResult, ResourceType, VideoMetadata, PlaylistMetadata, YoutubeTimestamp } from '@/types/youtube';
+import { YoutubeParseResult, ResourceType, YoutubeTimestamp } from '@/types/youtube';
 
-// Function to get a placeholder thumbnail for videos or playlists
-export const getPlaceholderThumbnail = (): string => {
-  return '/placeholder.svg';
-};
+/**
+ * Extracts video or playlist ID from a YouTube URL
+ */
+export function parseYoutubeUrl(url: string): YoutubeParseResult | null {
+  try {
+    const urlObj = new URL(url);
+    
+    // Handle youtube.com URLs
+    if (urlObj.hostname === 'www.youtube.com' || urlObj.hostname === 'youtube.com') {
+      const videoId = urlObj.searchParams.get('v');
+      const playlistId = urlObj.searchParams.get('list');
+      
+      // Handle /playlist?list=PLAYLIST_ID
+      if (urlObj.pathname === '/playlist' && playlistId) {
+        return {
+          type: ResourceType.PLAYLIST,
+          id: playlistId,
+          url: `https://www.youtube.com/playlist?list=${playlistId}`
+        };
+      }
+      
+      // Handle /watch?v=VIDEO_ID
+      if (urlObj.pathname === '/watch' && videoId) {
+        return {
+          type: ResourceType.VIDEO,
+          id: videoId,
+          url: `https://www.youtube.com/watch?v=${videoId}`
+        };
+      }
+    }
+    
+    // Handle youtu.be short URLs
+    if (urlObj.hostname === 'youtu.be') {
+      const videoId = urlObj.pathname.substring(1);
+      if (videoId) {
+        return {
+          type: ResourceType.VIDEO,
+          id: videoId,
+          url: `https://www.youtube.com/watch?v=${videoId}`
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
 
-// Function to create a timestamp object from seconds
-export const createTimestamp = (seconds: number): YoutubeTimestamp => {
+/**
+ * Formats seconds into HH:MM:SS format
+ */
+export function formatTimestamp(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  
+  const hStr = h > 0 ? `${h}:` : '';
+  const mStr = h > 0 ? `${m < 10 ? '0' : ''}${m}:` : `${m}:`;
+  const sStr = `${s < 10 ? '0' : ''}${s}`;
+  
+  return `${hStr}${mStr}${sStr}`;
+}
+
+/**
+ * Converts HH:MM:SS format to seconds
+ */
+export function parseTimestamp(timestamp: string): number {
+  const parts = timestamp.split(':').map(part => parseInt(part, 10));
+  
+  if (parts.length === 3) {
+    // HH:MM:SS
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    // MM:SS
+    return parts[0] * 60 + parts[1];
+  } else if (parts.length === 1) {
+    // SS
+    return parts[0];
+  }
+  
+  return 0;
+}
+
+/**
+ * Creates a timestamp object from seconds
+ */
+export function createTimestamp(seconds: number): YoutubeTimestamp {
   return {
     seconds,
-    formatted: formatDuration(`PT${Math.floor(seconds)}S`)
+    formatted: formatTimestamp(seconds)
   };
-};
+}
 
-// Function to fetch video details (placeholder implementation)
-export const fetchVideoDetails = async (videoId: string): Promise<VideoMetadata | null> => {
-  console.log(`Fetching details for video ${videoId}`);
-  // In a real app, this would make an API call
-  // For now, return a placeholder
-  return {
-    id: videoId,
-    title: `Video ${videoId}`,
-    description: "Sample video description",
-    thumbnailUrl: getThumbnailUrl(videoId),
-    channelId: "sample-channel",
-    channelTitle: "Sample Channel",
-    author: "Sample Author",
-    publishedAt: new Date().toISOString(),
-    uploadDate: new Date().toISOString(),
-    viewCount: "1000",
-    duration: "5:00"
-  };
-};
+/**
+ * Generates a placeholder thumbnail URL for videos
+ */
+export function getPlaceholderThumbnail(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
 
-// Function to parse YouTube URLs and extract video or playlist IDs
-export const parseYoutubeUrl = (url: string): YoutubeParseResult | null => {
-  // Video ID regex patterns
-  const videoRegexPatterns = [
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)/,
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^?]+)/,
-    /(?:https?:\/\/)?youtu\.be\/([^?]+)/
-  ];
-
-  // Playlist ID regex pattern
-  const playlistRegexPattern = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
-
-  // Check for video ID
-  for (const pattern of videoRegexPatterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return {
-        type: ResourceType.VIDEO,
-        id: match[1],
-        url: `https://www.youtube.com/watch?v=${match[1]}`
-      };
-    }
-  }
-
-  // Check for playlist ID
-  const playlistMatch = url.match(playlistRegexPattern);
-  if (playlistMatch && playlistMatch[1]) {
-    return {
-      type: ResourceType.PLAYLIST,
-      id: playlistMatch[1],
-      url: `https://www.youtube.com/playlist?list=${playlistMatch[1]}`
-    };
-  }
-
-  return null;
-};
-
-// Extract video ID from YouTube URL
-export const extractVideoId = (url: string): string | null => {
-  const result = parseYoutubeUrl(url);
-  return result?.type === ResourceType.VIDEO ? result.id : null;
-};
-
-// Extract playlist ID from YouTube URL
-export const extractPlaylistId = (url: string): string | null => {
-  const result = parseYoutubeUrl(url);
-  return result?.type === ResourceType.PLAYLIST ? result.id : null;
-};
-
-// Format YouTube video duration
-export const formatDuration = (duration: string): string => {
-  // YouTube API returns duration in ISO 8601 format (PT#H#M#S)
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  
+/**
+ * Formats duration from ISO 8601 format to human readable format
+ * Example: PT1H23M45S -> 1:23:45
+ */
+export function formatDuration(isoDuration: string): string {
+  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return '0:00';
   
   const hours = match[1] ? parseInt(match[1]) : 0;
@@ -100,23 +119,4 @@ export const formatDuration = (duration: string): string => {
   } else {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
-};
-
-// Format view count with commas
-export const formatViewCount = (viewCount: string): string => {
-  const count = parseInt(viewCount);
-  return count.toLocaleString();
-};
-
-// Get appropriate thumbnail URL from YouTube video
-export const getThumbnailUrl = (videoId: string, quality: 'default' | 'medium' | 'high' | 'standard' | 'maxres' = 'high'): string => {
-  const qualityMap = {
-    default: 'default',
-    medium: 'mqdefault',
-    high: 'hqdefault',
-    standard: 'sddefault',
-    maxres: 'maxresdefault'
-  };
-  
-  return `https://img.youtube.com/vi/${videoId}/${qualityMap[quality]}.jpg`;
-};
+}

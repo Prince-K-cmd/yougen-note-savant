@@ -12,7 +12,7 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video, onClick, isActive }: VideoCardProps) {
-  const thumbnailUrl = video.thumbnailUrl || (video.id ? `https://img.youtube.com/vi/${video.id}/hqdefault.jpg` : getPlaceholderThumbnail());
+  const thumbnailUrl = video.thumbnailUrl || (video.id ? getPlaceholderThumbnail(video.id) : '');
   
   return (
     <Card 
