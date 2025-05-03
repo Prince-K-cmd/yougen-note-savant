@@ -19,6 +19,7 @@ import { Slider } from "@/components/ui/slider";
 import { getSettings, saveSettings } from "@/utils/storage";
 import { useEffect, useState } from "react";
 import { Sun, Moon, Monitor, Type } from "lucide-react";
+import { toast } from "sonner";
 
 export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
@@ -42,6 +43,7 @@ export function AppearanceSettings() {
     
     // Apply font scale to html element
     document.documentElement.style.fontSize = `${newFontScale * 100}%`;
+    toast.success(`Font size updated to ${Math.round(newFontScale * 100)}%`);
   };
 
   return (
