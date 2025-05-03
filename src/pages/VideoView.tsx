@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
@@ -136,30 +135,17 @@ const VideoPlayer = ({ videoId, onTimeUpdate, autoplay, muted }: VideoPlayerProp
   );
 };
 
-// Adapter for chat message types
+// Adapter for chat message types - updating to match the new ChatMessage interface
 const adaptChatMessages = (chat: Chat) => {
   return {
     ...chat,
-    messages: chat.messages.map(msg => ({
-      id: msg.id,
-      role: msg.isUser ? 'user' : 'assistant',
-      content: msg.text,
-      timestamp: msg.timestamp
-    }))
+    messages: chat.messages // No need to transform since they already match our interface
   };
 };
 
-// Adapter to convert back to storage format
+// Adapter to convert back to storage format (already matches our interface, so no transformation needed)
 const adaptToStorageChat = (chat: any) => {
-  return {
-    ...chat,
-    messages: chat.messages.map((msg: any) => ({
-      id: msg.id,
-      isUser: msg.role === 'user',
-      text: msg.content,
-      timestamp: msg.timestamp
-    }))
-  };
+  return chat; // No transformation needed as the types now match
 };
 
 export default function VideoView() {

@@ -1,4 +1,42 @@
+
 import { VideoMetadata, PlaylistMetadata } from '@/types/youtube';
+
+// Interface for app settings
+export interface Settings {
+  theme: 'light' | 'dark' | 'system';
+  autoplay: boolean;
+  muteByDefault: boolean;
+  defaultQuality: string;
+  downloadFormat: string;
+  downloadSubtitles: boolean;
+  downloadPath: string;
+  enableHotkeys: boolean;
+  enableNotifications: boolean;
+}
+
+// Default settings
+const defaultSettings: Settings = {
+  theme: 'system',
+  autoplay: false,
+  muteByDefault: false,
+  defaultQuality: 'auto',
+  downloadFormat: 'MP4',
+  downloadSubtitles: true,
+  downloadPath: '',
+  enableHotkeys: true,
+  enableNotifications: true,
+};
+
+// Function to get app settings
+export const getSettings = (): Settings => {
+  const storedSettings = localStorage.getItem('yougen_settings');
+  return storedSettings ? JSON.parse(storedSettings) : defaultSettings;
+};
+
+// Function to save app settings
+export const saveSettings = (settings: Settings): void => {
+  localStorage.setItem('yougen_settings', JSON.stringify(settings));
+};
 
 // Function to save a video's metadata to local storage
 export const saveVideo = (video: VideoMetadata): void => {
@@ -15,6 +53,9 @@ export const saveVideo = (video: VideoMetadata): void => {
   }
   localStorage.setItem('yougen_videos', JSON.stringify(videos));
 };
+
+// Save video metadata (alias for saveVideo)
+export const saveVideoMetadata = saveVideo;
 
 // Function to retrieve all saved videos from local storage
 export const getAllVideos = (): VideoMetadata[] => {
