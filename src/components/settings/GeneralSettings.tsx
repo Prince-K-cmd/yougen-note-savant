@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSettings, saveSettings, Settings } from "@/utils/storage";
+import { getSettings, saveSettings } from "@/utils/storage";
 import { Switch } from "@/components/ui/switch";
 import { 
   Dialog,
@@ -30,8 +30,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// Import the type but rename it to avoid conflicts
+import type { Settings as SettingsType } from "@/utils/storage";
+
 export function GeneralSettings() {
-  const [settings, setSettings] = useState<Settings>(getSettings());
+  const [settings, setSettings] = useState<SettingsType>(getSettings());
   const [isClearingData, setIsClearingData] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 

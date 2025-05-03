@@ -18,7 +18,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { getSettings, saveSettings } from "@/utils/storage";
 import { useEffect, useState } from "react";
-import { Sun, Moon, Monitor, FontSize } from "lucide-react";
+import { Sun, Moon, Monitor, Type } from "lucide-react";
 
 export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
@@ -89,7 +89,7 @@ export function AppearanceSettings() {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <Label htmlFor="font-scale" className="flex items-center text-base">
-                <FontSize className="mr-2 h-5 w-5" />
+                <Type className="mr-2 h-5 w-5" />
                 Font Size
               </Label>
               <span className="text-sm font-medium text-muted-foreground">
