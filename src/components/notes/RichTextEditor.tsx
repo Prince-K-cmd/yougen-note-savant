@@ -6,6 +6,8 @@ import Link from '@tiptap/extension-link';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Image from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import Underline from '@tiptap/extension-underline';
 import { 
   Bold, 
   Italic, 
@@ -15,11 +17,11 @@ import {
   Heading1, 
   Heading2, 
   TextQuote,
-  Underline,
+  Underline as UnderlineIcon,
   AlignLeft,
   AlignCenter,
   AlignRight,
-  ListUnordered
+  List
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -46,6 +48,10 @@ export function RichTextEditor({
       Highlight,
       TextStyle,
       Color,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -92,7 +98,7 @@ export function RichTextEditor({
     }
 
     if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      editor.chain().focus().extendMarkRange('link').unsetMark('link').run();
       return;
     }
 
@@ -124,10 +130,10 @@ export function RichTextEditor({
           <Toggle
             size="sm"
             pressed={editor.isActive('underline')}
-            onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+            onPressedChange={() => editor.chain().focus().toggleMark('underline').run()}
             aria-label="Toggle underline"
           >
-            <Underline className="h-4 w-4" />
+            <UnderlineIcon className="h-4 w-4" />
           </Toggle>
           
           <div className="w-px h-6 mx-1 bg-border" />
@@ -196,7 +202,7 @@ export function RichTextEditor({
             onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
             aria-label="Toggle bullet list"
           >
-            <ListUnordered className="h-4 w-4" />
+            <List className="h-4 w-4" />
           </Toggle>
           
           <Toggle
