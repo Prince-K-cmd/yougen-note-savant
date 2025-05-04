@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { YoutubeTimestamp } from '@/types/youtube';
 import { createTimestamp } from '@/utils/youtube';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor } from './editor';
 
 interface NoteEditorProps {
   initialTitle?: string;

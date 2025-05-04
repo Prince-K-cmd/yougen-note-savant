@@ -1,9 +1,8 @@
-
 import { Note } from '@/types/note';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, Edit, Trash2 } from 'lucide-react';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor } from './editor';
 import { useState } from 'react';
 
 interface NoteCardProps {
