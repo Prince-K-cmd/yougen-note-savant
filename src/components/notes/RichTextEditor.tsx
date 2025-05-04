@@ -1,13 +1,11 @@
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Highlight from '@tiptap/extension-highlight';
-import Link from '@tiptap/extension-link';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Image from '@tiptap/extension-image';
-import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
 import { 
   Bold, 
   Italic, 
@@ -26,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
+import './editor.css';
 
 interface RichTextEditorProps {
   content: string;
@@ -45,13 +44,9 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Highlight,
       TextStyle,
       Color,
       Underline,
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -163,35 +158,6 @@ export function RichTextEditor({
             aria-label="Toggle blockquote"
           >
             <TextQuote className="h-4 w-4" />
-          </Toggle>
-          
-          <div className="w-px h-6 mx-1 bg-border" />
-          
-          <Toggle
-            size="sm"
-            pressed={editor.isActive({ textAlign: 'left' })}
-            onPressedChange={() => editor.commands.setTextAlign('left')}
-            aria-label="Align left"
-          >
-            <AlignLeft className="h-4 w-4" />
-          </Toggle>
-          
-          <Toggle
-            size="sm"
-            pressed={editor.isActive({ textAlign: 'center' })}
-            onPressedChange={() => editor.commands.setTextAlign('center')}
-            aria-label="Align center"
-          >
-            <AlignCenter className="h-4 w-4" />
-          </Toggle>
-          
-          <Toggle
-            size="sm"
-            pressed={editor.isActive({ textAlign: 'right' })}
-            onPressedChange={() => editor.commands.setTextAlign('right')}
-            aria-label="Align right"
-          >
-            <AlignRight className="h-4 w-4" />
           </Toggle>
           
           <div className="w-px h-6 mx-1 bg-border" />
