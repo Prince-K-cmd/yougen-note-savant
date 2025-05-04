@@ -228,6 +228,8 @@ export default function VideoView() {
             currentTime={currentTime}
             onTimeUpdate={setCurrentTime}
             onSaveNote={handleSaveNote}
+            isCreatingNote={isCreatingNote}
+            onCreateNoteToggle={setIsCreatingNote}
           />
           
           {/* Sidebar with Tabs */}

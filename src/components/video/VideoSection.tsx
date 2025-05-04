@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { VideoPlayer } from "@/components/youtube/VideoPlayer";
 import { VideoHeader } from "./VideoHeader";
 import { VideoDescription } from "./VideoDescription";
@@ -13,6 +12,8 @@ interface VideoSectionProps {
   currentTime: number;
   onTimeUpdate: (time: number) => void;
   onSaveNote: (note: { title: string; content: string; richContent?: string; videoTimestamp?: { seconds: number; formatted: string } }) => void;
+  isCreatingNote: boolean;
+  onCreateNoteToggle: (isCreating: boolean) => void;
 }
 
 export function VideoSection({ 
@@ -20,9 +21,10 @@ export function VideoSection({
   videoData, 
   currentTime, 
   onTimeUpdate, 
-  onSaveNote 
+  onSaveNote,
+  isCreatingNote,
+  onCreateNoteToggle
 }: VideoSectionProps) {
-  const [isCreatingNote, setIsCreatingNote] = useState(false);
   
   const handleNoteCreation = (note: { 
     title: string;
@@ -31,7 +33,7 @@ export function VideoSection({
     videoTimestamp?: { seconds: number; formatted: string };
   }) => {
     onSaveNote(note);
-    setIsCreatingNote(false);
+    onCreateNoteToggle(false);
   };
 
   return (
@@ -44,7 +46,7 @@ export function VideoSection({
       
       <VideoHeader 
         videoData={videoData} 
-        onTakeNote={() => setIsCreatingNote(true)}
+        onTakeNote={() => onCreateNoteToggle(true)}
       />
 
       {isCreatingNote && (
@@ -53,7 +55,7 @@ export function VideoSection({
           <NoteEditor
             currentVideoTime={currentTime}
             onSave={handleNoteCreation}
-            onCancel={() => setIsCreatingNote(false)}
+            onCancel={() => onCreateNoteToggle(false)}
           />
         </div>
       )}

@@ -35,10 +35,10 @@ const saveTranscript = (videoId: string, segments: TranscriptSegment[]): void =>
   }
 };
 
-// Mock function to generate a transcript - in a real app, this would call an API
+// Generate or fetch transcript
 export const generateTranscript = async (videoId: string): Promise<TranscriptSegment[]> => {
   const existingTranscript = getTranscriptByVideoId(videoId);
-  if (existingTranscript) {
+  if (existingTranscript && existingTranscript.length > 0) {
     return existingTranscript;
   }
 
