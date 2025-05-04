@@ -170,7 +170,7 @@ export function RichTextEditor({
           <Toggle
             size="sm"
             pressed={editor.isActive({ textAlign: 'left' })}
-            onPressedChange={() => editor.chain().focus().setTextAlign('left').run()}
+            onPressedChange={() => editor.commands.setTextAlign('left')}
             aria-label="Align left"
           >
             <AlignLeft className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function RichTextEditor({
           <Toggle
             size="sm"
             pressed={editor.isActive({ textAlign: 'center' })}
-            onPressedChange={() => editor.chain().focus().setTextAlign('center').run()}
+            onPressedChange={() => editor.commands.setTextAlign('center')}
             aria-label="Align center"
           >
             <AlignCenter className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function RichTextEditor({
           <Toggle
             size="sm"
             pressed={editor.isActive({ textAlign: 'right' })}
-            onPressedChange={() => editor.chain().focus().setTextAlign('right').run()}
+            onPressedChange={() => editor.commands.setTextAlign('right')}
             aria-label="Align right"
           >
             <AlignRight className="h-4 w-4" />
