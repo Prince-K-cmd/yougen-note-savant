@@ -6,14 +6,13 @@ import { VideoDescription } from "./VideoDescription";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { Separator } from "@/components/ui/separator";
 import { VideoMetadata } from "@/types/youtube";
-import { Note } from "@/types/note";
 
 interface VideoSectionProps {
   videoId: string;
   videoData: VideoMetadata;
   currentTime: number;
   onTimeUpdate: (time: number) => void;
-  onSaveNote: (note: { title: string; content: string; videoTimestamp?: { seconds: number; formatted: string } }) => void;
+  onSaveNote: (note: { title: string; content: string; richContent?: string; videoTimestamp?: { seconds: number; formatted: string } }) => void;
 }
 
 export function VideoSection({ 
@@ -28,6 +27,7 @@ export function VideoSection({
   const handleNoteCreation = (note: { 
     title: string;
     content: string;
+    richContent?: string;
     videoTimestamp?: { seconds: number; formatted: string };
   }) => {
     onSaveNote(note);

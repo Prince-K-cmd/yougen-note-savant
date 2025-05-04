@@ -77,3 +77,41 @@ export const getAllNotes = (): Note[] => {
     return [];
   }
 };
+
+export const getNoteById = (noteId: string): Note | undefined => {
+  try {
+    const notes = getAllNotes();
+    return notes.find((note) => note.id === noteId);
+  } catch (error) {
+    console.error("Error getting note by ID:", error);
+    return undefined;
+  }
+};
+
+export const exportNotesToMarkdown = (): string => {
+  try {
+    const notes = getAllNotes();
+    let markdownContent = '';
+    
+    notes.forEach((note) => {
+      markdownContent += `# ${note.title}\n\n`;
+      
+      if (note.videoTimestamp) {
+        markdownContent += `Timestamp: ${note.videoTimestamp.formatted}\n\n`;
+      }
+      
+      // Convert HTML to plain text or use content directly
+      const content = note.richContent 
+        ? note.richContent.replace(/<[^>]*>?/gm, '') 
+        : note.content;
+        
+      markdownContent += `${content}\n\n`;
+      markdownContent += `---\n\n`;
+    });
+    
+    return markdownContent;
+  } catch (error) {
+    console.error("Error exporting notes to markdown:", error);
+    return "Error exporting notes";
+  }
+};

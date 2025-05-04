@@ -15,7 +15,8 @@ import {
   saveChat, 
   getChatByResourceId, 
   getChatsByResourceId,
-  addChatMessage 
+  addChatMessage,
+  deleteNote as deleteNoteFromStorage
 } from "@/utils/storage";
 
 import { VideoSection } from "@/components/video/VideoSection";
@@ -24,6 +25,7 @@ import { TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
 import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
 import { Header } from "@/components/layout/Header";
 import { UrlInput } from "@/components/youtube/UrlInput";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock video data for initial UI rendering
 const mockVideoData = {
@@ -41,6 +43,7 @@ const mockVideoData = {
 export default function VideoView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [videoId, setVideoId] = useState(id || "");
   const [currentTime, setCurrentTime] = useState(0);
   const [videoData, setVideoData] = useState(mockVideoData);
@@ -150,26 +153,39 @@ export default function VideoView() {
     }, 1500);
   };
 
-  const handleSaveNote = ({ title, content, videoTimestamp }: { 
+  const handleSaveNote = ({ title, content, richContent, videoTimestamp }: { 
     title: string;
     content: string;
+    richContent?: string;
     videoTimestamp?: { seconds: number; formatted: string };
   }) => {
     const newNote = saveNote({
       resourceId: videoId,
       title,
       content,
+      richContent,
       tags: [],
       videoTimestamp,
     });
 
     setNotes([...notes, newNote]);
     setIsCreatingNote(false);
+    
+    toast({
+      title: "Note saved",
+      description: "Your note has been saved successfully.",
+    });
   };
 
   const handleDeleteNote = (noteId: string) => {
+    deleteNoteFromStorage(noteId);
     setNotes(notes.filter((note) => note.id !== noteId));
-    // In a real app, we would also delete from storage
+    
+    toast({
+      title: "Note deleted",
+      description: "Your note has been deleted.",
+      variant: "destructive"
+    });
   };
 
   const handleTimestampClick = (seconds: number) => {

@@ -1,17 +1,17 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { YoutubeTimestamp } from '@/types/youtube';
 import { createTimestamp } from '@/utils/youtube';
+import { RichTextEditor } from './RichTextEditor';
 
 interface NoteEditorProps {
   initialTitle?: string;
   initialContent?: string;
   videoTimestamp?: YoutubeTimestamp;
   currentVideoTime?: number;
-  onSave: (note: { title: string; content: string; videoTimestamp?: YoutubeTimestamp }) => void;
+  onSave: (note: { title: string; content: string; richContent?: string; videoTimestamp?: YoutubeTimestamp }) => void;
   onCancel?: () => void;
 }
 
@@ -35,6 +35,7 @@ export function NoteEditor({
     onSave({
       title: title.trim(),
       content: content.trim(),
+      richContent: content, // Save the HTML content
       videoTimestamp: timestamp
     });
   };
@@ -43,23 +44,15 @@ export function NoteEditor({
     if (currentVideoTime !== undefined) {
       setTimestamp(createTimestamp(currentVideoTime));
       
-      // Add timestamp to content if there is a cursor position
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        const cursorPos = textarea.selectionStart;
-        const textBefore = content.substring(0, cursorPos);
-        const textAfter = content.substring(cursorPos);
-        const timestampText = `[${createTimestamp(currentVideoTime).formatted}] `;
-        
-        setContent(textBefore + timestampText + textAfter);
-        
-        // Reset cursor position after the inserted timestamp
-        setTimeout(() => {
-          textarea.focus();
-          textarea.selectionStart = cursorPos + timestampText.length;
-          textarea.selectionEnd = cursorPos + timestampText.length;
-        }, 0);
-      }
+      // Add timestamp to content at current position or append
+      const formattedTimestamp = `[${createTimestamp(currentVideoTime).formatted}] `;
+      
+      // For rich text, we'll just append the timestamp to the current content
+      // A more sophisticated approach would be to insert at cursor position,
+      // but that would require more integration with the editor
+      setContent((prevContent) => {
+        return prevContent + formattedTimestamp;
+      });
     }
   };
 
@@ -94,11 +87,11 @@ export function NoteEditor({
         </div>
       </div>
       
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
+      <RichTextEditor 
+        content={content} 
+        onChange={setContent} 
         placeholder="Write your note..."
-        className="min-h-[150px] resize-none"
+        minHeight="200px"
       />
       
       <div className="flex justify-end gap-2">

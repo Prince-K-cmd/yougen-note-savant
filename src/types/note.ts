@@ -12,6 +12,8 @@ export interface Note {
   resourceId: string; // YouTube video or playlist ID
   title: string;
   content: string;
+  rawContent?: string; // Plain text content
+  richContent?: string; // HTML content for rich text editor
   tags: NoteTag[];
   createdAt: number;
   updatedAt: number;
