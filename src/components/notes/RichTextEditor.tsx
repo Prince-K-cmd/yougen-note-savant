@@ -6,6 +6,8 @@ import Color from '@tiptap/extension-color';
 import Image from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
 import { 
   Bold, 
   Italic, 
@@ -19,7 +21,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  List
+  List,
+  Highlighter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -47,6 +50,10 @@ export function RichTextEditor({
       TextStyle,
       Color,
       Underline,
+      Highlight,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -93,7 +100,7 @@ export function RichTextEditor({
     }
 
     if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetMark('link').run();
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
 
@@ -130,6 +137,15 @@ export function RichTextEditor({
           >
             <UnderlineIcon className="h-4 w-4" />
           </Toggle>
+
+          <Toggle
+            size="sm"
+            pressed={editor.isActive('highlight')}
+            onPressedChange={() => editor.chain().focus().toggleHighlight().run()}
+            aria-label="Toggle highlight"
+          >
+            <Highlighter className="h-4 w-4" />
+          </Toggle>
           
           <div className="w-px h-6 mx-1 bg-border" />
           
@@ -158,6 +174,35 @@ export function RichTextEditor({
             aria-label="Toggle blockquote"
           >
             <TextQuote className="h-4 w-4" />
+          </Toggle>
+          
+          <div className="w-px h-6 mx-1 bg-border" />
+          
+          <Toggle
+            size="sm"
+            pressed={editor.isActive({ textAlign: 'left' })}
+            onPressedChange={() => editor.chain().focus().setTextAlign('left').run()}
+            aria-label="Align left"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </Toggle>
+          
+          <Toggle
+            size="sm"
+            pressed={editor.isActive({ textAlign: 'center' })}
+            onPressedChange={() => editor.chain().focus().setTextAlign('center').run()}
+            aria-label="Align center"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </Toggle>
+          
+          <Toggle
+            size="sm"
+            pressed={editor.isActive({ textAlign: 'right' })}
+            onPressedChange={() => editor.chain().focus().setTextAlign('right').run()}
+            aria-label="Align right"
+          >
+            <AlignRight className="h-4 w-4" />
           </Toggle>
           
           <div className="w-px h-6 mx-1 bg-border" />
