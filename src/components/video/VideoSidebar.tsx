@@ -56,7 +56,7 @@ export function VideoSidebar({
         </TabsList>
         
         {/* Chat Tab */}
-        <TabsContent value="chat" className="flex-1 flex flex-col h-full overflow-hidden">
+        <TabsContent value="chat" className="flex-1 flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-6 text-center">
@@ -79,7 +79,7 @@ export function VideoSidebar({
             )}
           </div>
           
-          <div className="p-4 mt-auto">
+          <div className="p-4 border-t">
             <ChatInput 
               onSend={onSendMessage} 
               isLoading={isLoading}
@@ -89,15 +89,15 @@ export function VideoSidebar({
         </TabsContent>
         
         {/* Notes Tab */}
-        <TabsContent value="notes" className="flex-1 flex flex-col h-full overflow-hidden">
-          <div className="p-4 flex justify-between items-center">
+        <TabsContent value="notes" className="flex-1 flex flex-col h-full">
+          <div className="p-4 pb-2 flex justify-between items-center border-b">
             <h3 className="font-medium">Your Notes</h3>
             <Button size="sm" onClick={onCreateNote}>
               New Note
             </Button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4">
             {notes.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-6 text-center">
                 <NoteIcon className="h-12 w-12 text-muted-foreground mb-2" />
@@ -107,26 +107,30 @@ export function VideoSidebar({
                 </p>
               </div>
             ) : (
-              notes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onDelete={() => onDeleteNote(note.id)}
-                  onTimestampClick={note.videoTimestamp ? () => onTimestampClick(note.videoTimestamp!.seconds) : undefined}
-                />
-              ))
+              <div className="space-y-3">
+                {notes.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    onDelete={() => onDeleteNote(note.id)}
+                    onTimestampClick={note.videoTimestamp ? () => onTimestampClick(note.videoTimestamp!.seconds) : undefined}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </TabsContent>
         
         {/* Transcript Tab */}
-        <TabsContent value="transcript" className="flex-1 flex flex-col h-full overflow-hidden">
-          <TranscriptViewer
-            videoId={videoId}
-            transcript={transcript}
-            onSegmentClick={onTimestampClick}
-            isLoading={isLoadingTranscript}
-          />
+        <TabsContent value="transcript" className="flex-1 flex flex-col h-full">
+          <div className="p-4 h-full">
+            <TranscriptViewer
+              videoId={videoId}
+              transcript={transcript}
+              onSegmentClick={onTimestampClick}
+              isLoading={isLoadingTranscript}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

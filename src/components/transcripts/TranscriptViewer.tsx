@@ -58,7 +58,7 @@ export function TranscriptViewer({
         />
       </div>
       
-      <ScrollArea className="flex-1 pr-2">
+      <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary"></div>
