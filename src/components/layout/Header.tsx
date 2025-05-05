@@ -14,7 +14,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { FileText as NoteIcon, Menu, Settings } from "lucide-react";
+import { FileText as NoteIcon, Menu, Settings, History } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function Header() {
@@ -40,6 +40,12 @@ export function Header() {
                 <Link to="/notes" className={navigationMenuTriggerStyle()}>
                   <NoteIcon className="h-4 w-4 mr-2" />
                   Notes
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="/history" className={navigationMenuTriggerStyle()}>
+                  <History className="h-4 w-4 mr-2" />
+                  History
                 </Link>
               </NavigationMenuItem>
             </NavigationMenuList>
@@ -71,6 +77,13 @@ export function Header() {
               >
                 <NoteIcon className="h-4 w-4 mr-2" />
                 Notes
+              </Link>
+              <Link 
+                to="/history" 
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
               </Link>
             </nav>
           </SheetContent>

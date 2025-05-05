@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Note } from "@/types/note";
-import { getAllNotes, pinNote, deleteNote, updateNote } from "@/utils/storage";
+import { getAllNotes, pinNote, deleteNote, updateNote, saveNote } from "@/utils/storage";
 import { Header } from "@/components/layout/Header";
 import { NoteCard } from "@/components/notes/NoteCard";
 import { Button } from "@/components/ui/button";
@@ -83,13 +83,16 @@ export default function NotesView() {
     title: string; 
     content: string; 
     richContent?: string; 
+    videoTimestamp?: any;
   }) => {
     if (currentNote) {
+      // Update existing note
       const updated = {
         ...currentNote,
         title: updatedNote.title,
         content: updatedNote.content,
         richContent: updatedNote.richContent,
+        updatedAt: Date.now(),
       };
       
       updateNote(updated);
@@ -98,11 +101,26 @@ export default function NotesView() {
         title: "Note updated",
         description: "Your changes have been saved.",
       });
+    } else {
+      // Create new note
+      const newNote = saveNote({
+        title: updatedNote.title,
+        content: updatedNote.content,
+        richContent: updatedNote.richContent,
+        resourceId: "",
+        tags: [],
+        videoTimestamp: updatedNote.videoTimestamp,
+      });
       
-      setIsEditing(false);
-      setCurrentNote(null);
-      loadNotes();
+      toast({
+        title: "Note created",
+        description: "Your new note has been saved.",
+      });
     }
+    
+    setIsEditing(false);
+    setCurrentNote(null);
+    loadNotes();
   };
 
   const handleCreateNewNote = () => {

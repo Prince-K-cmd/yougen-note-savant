@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import VideoView from "./pages/VideoView";
 import PlaylistView from "./pages/PlaylistView";
 import NotesView from "./pages/NotesView";
+import HistoryView from "./pages/HistoryView";
 import NotFound from "./pages/NotFound";
 import "./AppStyles.css";
 
@@ -25,6 +26,7 @@ const App = () => {
             <Route path="/video/:id" element={<VideoView />} />
             <Route path="/playlist/:id" element={<PlaylistView />} />
             <Route path="/notes" element={<NotesView />} />
+            <Route path="/history" element={<HistoryView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
