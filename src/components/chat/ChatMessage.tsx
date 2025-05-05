@@ -3,6 +3,8 @@ import { Message } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Clock } from 'lucide-react';
+import { SpeechButton } from '@/components/speech/SpeechButton';
+import { useSpeech } from '@/hooks/useSpeech';
 
 interface ChatMessageProps {
   message: Message;
@@ -11,6 +13,15 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, onTimestampClick }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const { speak, stop, speaking } = useSpeech();
+  
+  const handleSpeakMessage = () => {
+    if (speaking) {
+      stop();
+    } else {
+      speak(message.content);
+    }
+  };
 
   return (
     <div 
@@ -48,6 +59,12 @@ export function ChatMessage({ message, onTimestampClick }: ChatMessageProps) {
             <span>
               {new Date(message.timestamp).toLocaleTimeString()}
             </span>
+            <SpeechButton 
+              onClick={handleSpeakMessage}
+              isActive={speaking}
+              mode="speak"
+              className="ml-2"
+            />
           </div>
         </div>
         

@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
+import { useSpeech } from '@/hooks/useSpeech';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { SpeechButton } from '@/components/speech/SpeechButton';
 
 interface EditorToolbarProps {
   editor: Editor;
@@ -26,6 +29,45 @@ interface EditorToolbarProps {
 }
 
 export function EditorToolbar({ editor, setLink, addImage }: EditorToolbarProps) {
+  const { speak, stop, speaking } = useSpeech();
+  const { 
+    startListening, 
+    stopListening, 
+    isListening, 
+    transcript, 
+    supported: recognitionSupported 
+  } = useSpeechRecognition({
+    continuous: true,
+    interimResults: true
+  });
+
+  // Handle speech recognition transcript
+  if (transcript && editor) {
+    // Insert at current cursor position
+    editor.chain().focus().insertContent(transcript).run();
+  }
+
+  const handleSpeakContent = () => {
+    if (speaking) {
+      stop();
+    } else {
+      const content = editor.getText();
+      if (content) {
+        speak(content);
+      }
+    }
+  };
+
+  const handleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+      // Focus editor
+      editor.commands.focus();
+    }
+  };
+
   return (
     <div className="border-b p-1 flex flex-wrap gap-1 items-center">
       <Toggle
@@ -161,6 +203,21 @@ export function EditorToolbar({ editor, setLink, addImage }: EditorToolbarProps)
       >
         <ImageIcon className="h-4 w-4" />
       </Button>
+      
+      <div className="w-px h-6 mx-1 bg-border" />
+      
+      <SpeechButton 
+        onClick={handleSpeakContent} 
+        isActive={speaking} 
+        mode="speak"
+      />
+      
+      <SpeechButton 
+        onClick={handleListening} 
+        isActive={isListening} 
+        mode="listen"
+        disabled={!recognitionSupported}
+      />
     </div>
   );
 }
