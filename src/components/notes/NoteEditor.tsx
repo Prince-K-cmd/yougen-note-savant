@@ -1,9 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { YoutubeTimestamp } from '@/types/youtube';
 import { createTimestamp } from '@/utils/youtube';
 import { RichTextEditor } from './editor';
+import { Undo, Redo } from 'lucide-react';
 
 interface NoteEditorProps {
   initialTitle?: string;
@@ -25,6 +27,41 @@ export function NoteEditor({
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [timestamp, setTimestamp] = useState<YoutubeTimestamp | undefined>(videoTimestamp);
+  
+  // For versioning
+  const [history, setHistory] = useState<string[]>([initialContent]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  
+  // Update content and add to history
+  const updateContent = (newContent: string) => {
+    setContent(newContent);
+    
+    // Add to history if it's different from the latest entry
+    if (newContent !== history[historyIndex]) {
+      // Remove any future history entries (if we've undone and then made changes)
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  };
+  
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+  
+  const handleUndo = () => {
+    if (canUndo) {
+      setHistoryIndex(historyIndex - 1);
+      setContent(history[historyIndex - 1]);
+    }
+  };
+  
+  const handleRedo = () => {
+    if (canRedo) {
+      setHistoryIndex(historyIndex + 1);
+      setContent(history[historyIndex + 1]);
+    }
+  };
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -49,11 +86,18 @@ export function NoteEditor({
       // For rich text, we'll just append the timestamp to the current content
       // A more sophisticated approach would be to insert at cursor position,
       // but that would require more integration with the editor
-      setContent((prevContent) => {
-        return prevContent + formattedTimestamp;
-      });
+      const newContent = content + formattedTimestamp;
+      updateContent(newContent);
     }
   };
+
+  // Auto-focus on the title input when the editor opens
+  useEffect(() => {
+    const titleInput = document.querySelector('input[placeholder="Note title"]') as HTMLInputElement;
+    if (titleInput) {
+      titleInput.focus();
+    }
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -63,9 +107,10 @@ export function NoteEditor({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Note title"
           className="font-medium"
+          autoFocus
         />
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {currentVideoTime !== undefined && (
             <Button 
               type="button" 
@@ -83,12 +128,35 @@ export function NoteEditor({
               Timestamp: {timestamp.formatted}
             </span>
           )}
+          
+          <div className="ml-auto flex gap-1">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={handleUndo} 
+              disabled={!canUndo}
+              className="h-8 w-8"
+              title="Undo"
+            >
+              <Undo className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={handleRedo} 
+              disabled={!canRedo}
+              className="h-8 w-8"
+              title="Redo"
+            >
+              <Redo className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
       
       <RichTextEditor 
         content={content} 
-        onChange={setContent} 
+        onChange={updateContent} 
         placeholder="Write your note..."
         minHeight="200px"
       />

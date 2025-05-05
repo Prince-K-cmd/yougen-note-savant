@@ -183,6 +183,7 @@ export default function VideoView() {
         content,
         richContent,
         videoTimestamp,
+        updatedAt: Date.now()
       };
       
       updateNote(updatedNote);
