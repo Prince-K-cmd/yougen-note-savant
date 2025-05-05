@@ -9,6 +9,7 @@ import { NoteCard } from "@/components/notes/NoteCard";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
 import { TranscriptViewer, TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
+import { useNavigate } from "react-router-dom";
 
 interface VideoSidebarProps {
   videoId: string;
@@ -21,6 +22,7 @@ interface VideoSidebarProps {
   onTimestampClick: (seconds: number) => void;
   onDeleteNote: (noteId: string) => void;
   onCreateNote: () => void;
+  onPinNote?: (noteId: string, pinned: boolean) => void;
 }
 
 export function VideoSidebar({
@@ -33,9 +35,15 @@ export function VideoSidebar({
   onSendMessage,
   onTimestampClick,
   onDeleteNote,
-  onCreateNote
+  onCreateNote,
+  onPinNote
 }: VideoSidebarProps) {
   const [activeTab, setActiveTab] = useState("chat");
+  const navigate = useNavigate();
+  
+  const goToAllNotes = () => {
+    navigate('/notes');
+  };
 
   return (
     <div className="h-[calc(100vh-16rem)] flex flex-col">
@@ -92,9 +100,14 @@ export function VideoSidebar({
         <TabsContent value="notes" className="flex-1 flex flex-col h-full">
           <div className="p-4 pb-2 flex justify-between items-center border-b">
             <h3 className="font-medium">Your Notes</h3>
-            <Button size="sm" onClick={onCreateNote}>
-              New Note
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={goToAllNotes}>
+                All Notes
+              </Button>
+              <Button size="sm" onClick={onCreateNote}>
+                New Note
+              </Button>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4">
@@ -114,6 +127,7 @@ export function VideoSidebar({
                     note={note}
                     onDelete={() => onDeleteNote(note.id)}
                     onTimestampClick={note.videoTimestamp ? () => onTimestampClick(note.videoTimestamp!.seconds) : undefined}
+                    onPin={onPinNote}
                   />
                 ))}
               </div>

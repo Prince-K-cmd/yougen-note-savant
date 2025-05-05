@@ -19,4 +19,6 @@ export interface Note {
   updatedAt: number;
   videoTimestamp?: YoutubeTimestamp;
   fromChatId?: string; // If note was created from a chat
+  pinned?: boolean; // New property for pinned notes
+  color?: string; // New property for note color
 }

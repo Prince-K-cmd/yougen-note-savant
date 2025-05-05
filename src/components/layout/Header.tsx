@@ -1,123 +1,82 @@
 
+import React from "react";
+import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { Button } from "@/components/ui/button";
-import { Youtube, ArrowLeft, History, Settings } from "lucide-react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllChats, getVideoMetadata } from "@/utils/storage";
-import { SettingsDialog } from "../settings/SettingsDialog";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
+import { FileText as NoteIcon, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function Header() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const chats = getAllChats().sort((a, b) => b.updatedAt - a.updatedAt);
-  const isVideoPage = location.pathname.includes('/video/');
-
-  const handleGoBack = () => {
-    navigate(-1);
-  };
-
-  const handleHistoryItemClick = (resourceId: string) => {
-    setIsHistoryOpen(false);
-    navigate(`/video/${resourceId}`);
-  };
-
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isVideoPage && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleGoBack} 
-              className="mr-2"
-              title="Go back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <Link to="/" className="flex items-center gap-2">
-            <Youtube className="h-6 w-6 text-brand-purple" />
-            <h1 className="text-xl font-semibold tracking-tight">
-              YouGen <span className="text-brand-teal">Note Savant</span>
-            </h1>
-          </Link>
-        </div>
+    <header className="sticky top-0 z-40 w-full border-b bg-background">
+      <div className="container flex h-16 items-center px-4 sm:px-6">
+        <Link to="/" className="mr-6 flex items-center space-x-2">
+          <span className="text-xl font-bold tracking-tight">YouGen</span>
+        </Link>
         
-        <div className="flex items-center gap-2">
-          <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <History className="h-4 w-4" />
-                History
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Viewing History</DialogTitle>
-              </DialogHeader>
-              <ScrollArea className="h-[60vh] mt-4">
-                {chats.length > 0 ? (
-                  <div className="space-y-2">
-                    {chats.map(chat => {
-                      const video = getVideoMetadata(chat.resourceId);
-                      return (
-                        <div 
-                          key={chat.id} 
-                          onClick={() => handleHistoryItemClick(chat.resourceId)}
-                          className="p-3 rounded-md border hover:bg-accent cursor-pointer"
-                        >
-                          <div className="font-medium truncate">
-                            {video?.title || chat.title}
-                          </div>
-                          <div className="text-sm text-muted-foreground flex justify-between mt-1">
-                            <span>
-                              {chat.messages.length} message{chat.messages.length !== 1 ? 's' : ''}
-                            </span>
-                            <span>
-                              {new Date(chat.updatedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No history yet. Start watching videos and chatting!
-                  </div>
-                )}
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex md:flex-1">
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link to="/" className={navigationMenuTriggerStyle()}>
+                  Home
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="/notes" className={navigationMenuTriggerStyle()}>
+                  <NoteIcon className="h-4 w-4 mr-2" />
+                  Notes
+                </Link>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </div>
 
+        {/* Mobile Navigation */}
+        <Sheet>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="ghost" size="icon" className="mr-2">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left">
+            <Link to="/" className="flex items-center space-x-2 mb-8">
+              <span className="text-xl font-bold tracking-tight">YouGen</span>
+            </Link>
+            <nav className="flex flex-col gap-4">
+              <Link 
+                to="/" 
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Home
+              </Link>
+              <Link 
+                to="/notes" 
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <NoteIcon className="h-4 w-4 mr-2" />
+                Notes
+              </Link>
+            </nav>
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex flex-1 items-center justify-end space-x-2">
           <ThemeToggle />
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsSettingsOpen(true)}
-            className="gap-1"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Button>
-          
-          <SettingsDialog 
-            open={isSettingsOpen}
-            onOpenChange={setIsSettingsOpen}
-          />
+          <SettingsDialog />
         </div>
       </div>
     </header>

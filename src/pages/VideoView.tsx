@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
 import { ResourceType } from "@/types/youtube";
@@ -16,7 +16,9 @@ import {
   getChatByResourceId, 
   getChatsByResourceId,
   addChatMessage,
-  deleteNote as deleteNoteFromStorage
+  deleteNote as deleteNoteFromStorage,
+  updateNote,
+  pinNote
 } from "@/utils/storage";
 
 import { VideoSection } from "@/components/video/VideoSection";
@@ -43,6 +45,7 @@ const mockVideoData = {
 export default function VideoView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [videoId, setVideoId] = useState(id || "");
   const [currentTime, setCurrentTime] = useState(0);
@@ -53,6 +56,7 @@ export default function VideoView() {
   const [isLoading, setIsLoading] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   // Load video data and notes
   useEffect(() => {
@@ -74,9 +78,15 @@ export default function VideoView() {
       });
     }
 
-    // Load notes for this video
-    const videoNotes = getNotesByResourceId(videoId);
-    setNotes(videoNotes);
+    // Check if we have a timestamp from navigation state
+    if (location.state?.timestamp) {
+      const timestampSeconds = location.state.timestamp;
+      setTimeout(() => {
+        handleTimestampClick(timestampSeconds);
+      }, 1000);
+    }
+
+    loadVideoNotes();
 
     // Load chat history for this video
     const videoChats = getChatsByResourceId(videoId);
@@ -85,7 +95,7 @@ export default function VideoView() {
       const latestChat = videoChats.sort((a, b) => b.updatedAt - a.updatedAt)[0];
       setMessages(latestChat.messages);
     }
-  }, [videoId, navigate]);
+  }, [videoId, navigate, location.state]);
 
   // Load transcript data
   useEffect(() => {
@@ -112,6 +122,12 @@ export default function VideoView() {
     
     loadTranscript();
   }, [videoId]);
+
+  const loadVideoNotes = () => {
+    // Load notes for this video
+    const videoNotes = getNotesByResourceId(videoId);
+    setNotes(videoNotes);
+  };
 
   const handleSendMessage = (content: string) => {
     const userMessage: Message = {
@@ -159,27 +175,56 @@ export default function VideoView() {
     richContent?: string;
     videoTimestamp?: { seconds: number; formatted: string };
   }) => {
-    const newNote = saveNote({
-      resourceId: videoId,
-      title,
-      content,
-      richContent,
-      tags: [],
-      videoTimestamp,
-    });
-
-    setNotes([...notes, newNote]);
-    setIsCreatingNote(false);
+    if (editingNote) {
+      // Update existing note
+      const updatedNote = {
+        ...editingNote,
+        title,
+        content,
+        richContent,
+        videoTimestamp,
+      };
+      
+      updateNote(updatedNote);
+      setEditingNote(null);
+      toast({
+        title: "Note updated",
+        description: "Your note has been updated successfully.",
+      });
+    } else {
+      // Create new note
+      const newNote = saveNote({
+        resourceId: videoId,
+        title,
+        content,
+        richContent,
+        tags: [],
+        videoTimestamp,
+      });
+      
+      setNotes([...notes, newNote]);
+      toast({
+        title: "Note saved",
+        description: "Your note has been saved successfully.",
+      });
+    }
     
+    setIsCreatingNote(false);
+    loadVideoNotes();
+  };
+
+  const handlePinNote = (noteId: string, isPinned: boolean) => {
+    pinNote(noteId, isPinned);
     toast({
-      title: "Note saved",
-      description: "Your note has been saved successfully.",
+      title: isPinned ? "Note pinned" : "Note unpinned",
+      description: isPinned ? "Note has been pinned to the top." : "Note has been unpinned.",
     });
+    loadVideoNotes();
   };
 
   const handleDeleteNote = (noteId: string) => {
     deleteNoteFromStorage(noteId);
-    setNotes(notes.filter((note) => note.id !== noteId));
+    loadVideoNotes();
     
     toast({
       title: "Note deleted",
@@ -243,7 +288,11 @@ export default function VideoView() {
             onSendMessage={handleSendMessage}
             onTimestampClick={handleTimestampClick}
             onDeleteNote={handleDeleteNote}
-            onCreateNote={() => setIsCreatingNote(true)}
+            onCreateNote={() => {
+              setEditingNote(null);
+              setIsCreatingNote(true);
+            }}
+            onPinNote={handlePinNote}
           />
         </div>
       </div>
