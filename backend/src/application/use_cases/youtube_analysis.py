@@ -158,13 +158,44 @@ class YoutubeAnalysisUseCase:
             logger.error(f"Error in get_video_transcript use case for {url}: {e}")
             return None
     
-    async def download_video(self, url: str, format_type: str = "mp4") -> Optional[Dict[str, Any]]:
+    async def get_video_formats(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Get available formats for a YouTube video.
+        
+        Args:
+            url: YouTube video URL
+            
+        Returns:
+            Dictionary with available formats or None if an error occurs
+        """
+        try:
+            # Extract video ID
+            video_id = self.video_agent.extract_video_id(url)
+            if not video_id:
+                logger.error(f"Invalid YouTube URL: {url}")
+                return None
+            
+            # Get available formats
+            formats_info = await self.video_agent.get_available_formats(url)
+            return formats_info
+            
+        except Exception as e:
+            logger.error(f"Error getting video formats for {url}: {e}")
+            return None
+    
+    async def download_video(
+        self, 
+        url: str, 
+        format_type: str = "mp4", 
+        resolution: Optional[str] = "720"
+    ) -> Optional[Dict[str, Any]]:
         """
         Download a YouTube video.
         
         Args:
             url: YouTube video URL
             format_type: Format to download (mp4 or mp3)
+            resolution: Video resolution for mp4 (240, 360, 480, 720, 1080)
             
         Returns:
             Download information or None if an error occurs
@@ -182,7 +213,12 @@ class YoutubeAnalysisUseCase:
                 return None
             
             # Download video
-            download_info = await self.video_agent.download_video(url, format_type)
+            download_info = await self.video_agent.download_video(
+                url, 
+                format_type, 
+                resolution if format_type == "mp4" else None
+            )
+            
             if not download_info:
                 logger.error(f"Failed to download video {url}")
                 return None
@@ -195,6 +231,7 @@ class YoutubeAnalysisUseCase:
                 "title": download_info["title"],
                 "size": download_info["file_size"],
                 "format": download_info["format"],
+                "resolution": download_info.get("resolution"),
             }
             
         except Exception as e:
@@ -205,6 +242,7 @@ class YoutubeAnalysisUseCase:
         self, 
         url: str, 
         format_type: str, 
+        resolution: Optional[str],
         task_id: str,
         websocket_manager: WebSocketManager
     ) -> None:
@@ -214,6 +252,7 @@ class YoutubeAnalysisUseCase:
         Args:
             url: YouTube playlist URL
             format_type: Format to download (mp4 or mp3)
+            resolution: Video resolution for mp4 (240, 360, 480, 720, 1080)
             task_id: Task ID for tracking progress
             websocket_manager: WebSocket manager for progress updates
         """
@@ -251,7 +290,11 @@ class YoutubeAnalysisUseCase:
             for video_data in videos:
                 try:
                     video_url = f"https://www.youtube.com/watch?v={video_data['video_id']}"
-                    download_info = await self.download_video(video_url, format_type)
+                    download_info = await self.download_video(
+                        video_url, 
+                        format_type,
+                        resolution if format_type == "mp4" else None
+                    )
                     
                     if download_info:
                         completed += 1

@@ -9,7 +9,9 @@ from src.models.youtube import (
     DownloadRequest, 
     BatchDownloadRequest,
     DownloadResponse, 
-    BatchDownloadResponse
+    BatchDownloadResponse,
+    FormatListRequest,
+    FormatListResponse
 )
 from src.application.use_cases.youtube_analysis import YoutubeAnalysisUseCase
 from src.infrastructure.repositories.video_repository import VideoRepository
@@ -85,13 +87,32 @@ async def get_transcript(
     return transcript
 
 
+@router.post("/formats", response_model=FormatListResponse)
+async def list_formats(
+    request: FormatListRequest,
+    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
+):
+    """
+    List available formats for a YouTube video.
+    """
+    formats_info = await use_case.get_video_formats(request.video_url)
+    
+    if not formats_info:
+        raise HTTPException(
+            status_code=500,
+            detail="Video formats could not be retrieved.",
+        )
+    
+    return FormatListResponse(**formats_info)
+
+
 @router.post("/download", response_model=DownloadResponse)
 async def download_video(
     request: DownloadRequest,
     use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
 ):
     """
-    Download a YouTube video in the specified format.
+    Download a YouTube video in the specified format and resolution.
     """
     if request.format not in ["mp4", "mp3"]:
         raise HTTPException(
@@ -99,7 +120,18 @@ async def download_video(
             detail="Invalid format. Supported formats are 'mp4' and 'mp3'.",
         )
     
-    download_info = await use_case.download_video(request.video_url, request.format)
+    # For MP4, validate resolution
+    if request.format == "mp4" and request.resolution not in ["240", "360", "480", "720", "1080"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid resolution. Supported resolutions are '240', '360', '480', '720', '1080'.",
+        )
+    
+    download_info = await use_case.download_video(
+        request.video_url, 
+        request.format,
+        request.resolution if request.format == "mp4" else None
+    )
     
     if not download_info:
         raise HTTPException(
@@ -127,6 +159,13 @@ async def download_playlist(
             detail="Invalid format. Supported formats are 'mp4' and 'mp3'.",
         )
     
+    # For MP4, validate resolution
+    if request.format == "mp4" and request.resolution not in ["240", "360", "480", "720", "1080"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid resolution. Supported resolutions are '240', '360', '480', '720', '1080'.",
+        )
+    
     # Get playlist metadata to know how many videos to download
     playlist_data = await use_case.get_playlist_metadata(request.playlist_url)
     
@@ -144,7 +183,8 @@ async def download_playlist(
     background_tasks.add_task(
         use_case.download_playlist,
         request.playlist_url, 
-        request.format, 
+        request.format,
+        request.resolution if request.format == "mp4" else None, 
         task_id,
         websocket_manager
     )

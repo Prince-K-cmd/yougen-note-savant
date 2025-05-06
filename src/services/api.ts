@@ -1,6 +1,18 @@
 
 import axios from "axios";
-import { IChatRequest, IChatResponse, IDownloadRequest, IDownloadResponse, INoteRequest, INoteResponse, IVideoMetadata } from "@/types/api";
+import { 
+  IChatRequest, 
+  IChatResponse, 
+  IDownloadRequest, 
+  IDownloadResponse, 
+  INoteRequest, 
+  INoteResponse, 
+  IVideoMetadata,
+  IFormatListRequest,
+  IFormatListResponse,
+  IBatchDownloadRequest, 
+  IBatchDownloadResponse 
+} from "@/types/api";
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -25,6 +37,26 @@ export const youtubeApi = {
   // Get playlist details
   getPlaylistMetadata: async (url: string): Promise<any> => {
     const response = await api.get("/youtube/playlist", { params: { url } });
+    return response.data;
+  },
+  
+  // Get available formats for a video
+  getVideoFormats: async (videoUrl: string): Promise<IFormatListResponse> => {
+    const response = await api.post("/youtube/formats", { video_url: videoUrl });
+    return response.data;
+  },
+  
+  // Download a playlist
+  downloadPlaylist: async (request: IBatchDownloadRequest): Promise<IBatchDownloadResponse> => {
+    const response = await api.post("/youtube/download/batch", request);
+    return response.data;
+  },
+  
+  // Get video transcript
+  getTranscript: async (videoId: string, language: string = "en"): Promise<any> => {
+    const response = await api.get("/youtube/transcript", { 
+      params: { video_id: videoId, language } 
+    });
     return response.data;
   }
 };

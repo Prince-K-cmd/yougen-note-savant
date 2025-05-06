@@ -55,18 +55,30 @@ class TranscriptRequest(BaseModel):
     language: str = Field("en", description="Language code")
 
 
+class VideoFormat(BaseModel):
+    """Model for video format information."""
+    
+    format_id: str = Field(..., description="Format identifier")
+    extension: str = Field(..., description="File extension")
+    resolution: str = Field(..., description="Video resolution")
+    filesize_approx: Optional[int] = Field(None, description="Approximate file size in bytes")
+    format_note: Optional[str] = Field(None, description="Format description")
+
+
 class DownloadRequest(BaseModel):
     """Request model for downloading videos."""
     
     video_url: str = Field(..., description="YouTube video URL")
-    format: str = Field(..., description="Format to download (mp4 or mp3)")
+    format: str = Field("mp4", description="File format (mp4 or mp3)")
+    resolution: Optional[str] = Field("720", description="Video resolution for mp4 (240, 360, 480, 720, 1080)")
 
 
 class BatchDownloadRequest(BaseModel):
     """Request model for batch downloading videos."""
     
     playlist_url: str = Field(..., description="YouTube playlist URL")
-    format: str = Field(..., description="Format to download (mp4 or mp3)")
+    format: str = Field("mp4", description="Format to download (mp4 or mp3)")
+    resolution: Optional[str] = Field("720", description="Video resolution for mp4 (240, 360, 480, 720, 1080)")
 
 
 class DownloadResponse(BaseModel):
@@ -76,6 +88,7 @@ class DownloadResponse(BaseModel):
     title: str = Field(..., description="Video title")
     size: Optional[int] = Field(None, description="File size in bytes")
     format: str = Field(..., description="File format")
+    resolution: Optional[str] = Field(None, description="Video resolution (for mp4)")
 
 
 class BatchDownloadResponse(BaseModel):
@@ -83,3 +96,17 @@ class BatchDownloadResponse(BaseModel):
     
     task_id: str = Field(..., description="Task ID for tracking progress")
     total_videos: int = Field(..., description="Total number of videos to download")
+
+
+class FormatListRequest(BaseModel):
+    """Request model for listing available formats."""
+    
+    video_url: str = Field(..., description="YouTube video URL")
+
+
+class FormatListResponse(BaseModel):
+    """Response model for listing available formats."""
+    
+    formats: List[VideoFormat] = Field(default_factory=list, description="Available video formats")
+    video_id: str = Field(..., description="YouTube video ID")
+    title: str = Field(..., description="Video title")

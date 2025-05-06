@@ -11,6 +11,8 @@ import { Download, ListVideo } from "lucide-react";
 import { youtubeApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import websocketService from "@/services/websocket";
+import { PlaylistDownloadDialog } from "@/components/youtube/PlaylistDownloadDialog";
+import { DownloadDialog } from "@/components/youtube/DownloadDialog";
 
 // Loading state for playlist data
 const loadingPlaylistData: PlaylistMetadata = {
@@ -41,6 +43,10 @@ export default function PlaylistView() {
     percentage: 0,
     currentVideo: "",
   });
+  const [showPlaylistDownloadDialog, setShowPlaylistDownloadDialog] = useState(false);
+  const [showVideoDownloadDialog, setShowVideoDownloadDialog] = useState(false);
+  const [selectedVideoId, setSelectedVideoId] = useState("");
+  const [selectedVideoTitle, setSelectedVideoTitle] = useState("");
 
   // Set up WebSocket connection
   useEffect(() => {
@@ -151,39 +157,29 @@ export default function PlaylistView() {
     navigate(`/video/${videoId}`);
   };
 
-  const handleDownloadPlaylist = async () => {
+  const handleDownloadPlaylist = async (format: "mp3" | "mp4", resolution?: string) => {
     try {
       setIsDownloading(true);
       const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
       
-      const response = await fetch("http://localhost:8000/api/youtube/download/batch", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          playlist_url: playlistUrl,
-          format: "mp4",
-        }),
+      const response = await youtubeApi.downloadPlaylist({
+        playlist_url: playlistUrl,
+        format: format,
+        resolution: resolution as '240' | '360' | '480' | '720' | '1080' | undefined,
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to start playlist download");
-      }
-      
-      const data = await response.json();
       setDownloadProgress({
-        taskId: data.task_id,
+        taskId: response.task_id,
         completed: 0,
         failed: 0,
-        total: data.total_videos,
+        total: response.total_videos,
         percentage: 0,
         currentVideo: "",
       });
       
       toast({
         title: "Download Started",
-        description: `Started downloading ${data.total_videos} videos. You'll be notified when complete.`,
+        description: `Started downloading ${response.total_videos} videos. You'll be notified when complete.`,
       });
     } catch (error) {
       console.error("Error starting playlist download:", error);
@@ -196,29 +192,10 @@ export default function PlaylistView() {
     }
   };
 
-  const handleDownloadVideo = async (videoId: string) => {
-    try {
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      
-      const response = await youtubeApi.downloadVideo({
-        video_url: videoUrl,
-        format: "mp4",
-      });
-      
-      if (response) {
-        toast({
-          title: "Download Started",
-          description: `Downloading "${playlistData.videos.find(v => v.id === videoId)?.title || 'video'}"`,
-        });
-      }
-    } catch (error) {
-      console.error("Error downloading video:", error);
-      toast({
-        title: "Download Error",
-        description: "Could not download the video. Please try again later.",
-        variant: "destructive",
-      });
-    }
+  const handleVideoDownloadClick = (videoId: string, videoTitle: string) => {
+    setSelectedVideoId(videoId);
+    setSelectedVideoTitle(videoTitle);
+    setShowVideoDownloadDialog(true);
   };
 
   // Helper function to format duration in seconds to mm:ss format
@@ -267,26 +244,16 @@ export default function PlaylistView() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={handleDownloadPlaylist}
-                      disabled={isDownloading}
+                      onClick={() => setShowPlaylistDownloadDialog(true)}
                     >
-                      {isDownloading ? (
-                        <>
-                          <div className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                          Downloading {downloadProgress.percentage}%
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-4 w-4 mr-1" />
-                          Download All Videos
-                        </>
-                      )}
+                      <Download className="h-4 w-4 mr-1" />
+                      Download All Videos
                     </Button>
                   </div>
                   
-                  {isDownloading && downloadProgress.currentVideo && (
+                  {isDownloading && downloadProgress.currentVideo && !showPlaylistDownloadDialog && (
                     <div className="mt-2 text-sm text-muted-foreground">
-                      Currently downloading: {downloadProgress.currentVideo}
+                      Downloading: {downloadProgress.completed + downloadProgress.failed}/{downloadProgress.total} ({downloadProgress.percentage}%)
                     </div>
                   )}
                 </div>
@@ -316,7 +283,7 @@ export default function PlaylistView() {
                           className="h-8 w-8 rounded-full bg-black/70 hover:bg-black/90 text-white"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDownloadVideo(video.id);
+                            handleVideoDownloadClick(video.id, video.title);
                           }}
                         >
                           <Download className="h-4 w-4" />
@@ -335,6 +302,27 @@ export default function PlaylistView() {
           </>
         )}
       </main>
+
+      {/* Download Dialogs */}
+      <PlaylistDownloadDialog
+        playlistId={playlistId}
+        playlistTitle={playlistData.title}
+        isOpen={showPlaylistDownloadDialog}
+        onClose={() => setShowPlaylistDownloadDialog(false)}
+        downloadProgress={downloadProgress}
+        isDownloading={isDownloading}
+        onStartDownload={(format, resolution) => {
+          handleDownloadPlaylist(format, resolution);
+          // Don't close the dialog immediately if we're starting a download
+        }}
+      />
+      
+      <DownloadDialog
+        videoId={selectedVideoId}
+        videoTitle={selectedVideoTitle}
+        isOpen={showVideoDownloadDialog}
+        onClose={() => setShowVideoDownloadDialog(false)}
+      />
     </div>
   );
 }

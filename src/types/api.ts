@@ -29,15 +29,36 @@ export interface IPlaylistMetadata {
   videos: IVideoMetadata[];
 }
 
+// Video format types
+export interface IVideoFormat {
+  format_id: string;
+  extension: string;
+  resolution: string;
+  filesize_approx?: number;
+  format_note?: string;
+}
+
+export interface IFormatListRequest {
+  video_url: string;
+}
+
+export interface IFormatListResponse {
+  formats: IVideoFormat[];
+  video_id: string;
+  title: string;
+}
+
 // Download types
 export interface IDownloadRequest {
   video_url: string;
   format: 'mp4' | 'mp3';
+  resolution?: '240' | '360' | '480' | '720' | '1080';
 }
 
 export interface IBatchDownloadRequest {
   playlist_url: string;
   format: 'mp4' | 'mp3';
+  resolution?: '240' | '360' | '480' | '720' | '1080';
 }
 
 export interface IDownloadResponse {
@@ -45,6 +66,7 @@ export interface IDownloadResponse {
   title: string;
   size?: number;
   format: string;
+  resolution?: string;
 }
 
 export interface IBatchDownloadResponse {

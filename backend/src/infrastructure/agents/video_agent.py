@@ -128,6 +128,30 @@ class VideoAgent:
             return None
     
     @classmethod
+    async def get_available_formats(cls, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Get available formats for a YouTube video.
+        
+        Args:
+            url: YouTube video URL
+            
+        Returns:
+            Dictionary with format information or None if an error occurs
+        """
+        try:
+            video_id = cls.extract_video_id(url)
+            if not video_id:
+                logger.error(f"Invalid YouTube URL: {url}")
+                return None
+                
+            formats_info = await DownloadTool.get_available_formats(url)
+            return formats_info
+            
+        except Exception as e:
+            logger.error(f"Error getting available formats for {url}: {e}")
+            return None
+    
+    @classmethod
     async def get_transcript_segments(cls, video_id: str, language: str = "en") -> Optional[List[Dict[str, Any]]]:
         """
         Get transcript segments for a YouTube video.
@@ -173,13 +197,19 @@ class VideoAgent:
             return None
     
     @classmethod
-    async def download_video(cls, url: str, format_type: str = "mp4") -> Optional[Dict[str, Any]]:
+    async def download_video(
+        cls, 
+        url: str, 
+        format_type: str = "mp4", 
+        resolution: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Download a YouTube video.
         
         Args:
             url: YouTube video URL
             format_type: Format to download (mp4 or mp3)
+            resolution: Video resolution for mp4 (240, 360, 480, 720, 1080)
             
         Returns:
             Download information or None if an error occurs
@@ -190,7 +220,7 @@ class VideoAgent:
                 logger.error(f"Invalid YouTube URL: {url}")
                 return None
                 
-            download_info = await DownloadTool.download_video(url, format_type)
+            download_info = await DownloadTool.download_video(url, format_type, resolution)
             return download_info
             
         except Exception as e:
