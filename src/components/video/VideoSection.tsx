@@ -14,6 +14,7 @@ interface VideoSectionProps {
   onSaveNote: (note: { title: string; content: string; richContent?: string; videoTimestamp?: { seconds: number; formatted: string } }) => void;
   isCreatingNote: boolean;
   onCreateNoteToggle: (isCreating: boolean) => void;
+  isLoading?: boolean;
 }
 
 export function VideoSection({ 
@@ -23,7 +24,8 @@ export function VideoSection({
   onTimeUpdate, 
   onSaveNote,
   isCreatingNote,
-  onCreateNoteToggle
+  onCreateNoteToggle,
+  isLoading = false
 }: VideoSectionProps) {
   
   const handleNoteCreation = (note: { 
