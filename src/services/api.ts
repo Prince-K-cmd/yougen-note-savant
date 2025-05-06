@@ -63,13 +63,13 @@ export const youtubeApi = {
   
   // Get download history
   getDownloadHistory: async (): Promise<IDownloadHistory[]> => {
-    const response = await api.get("/youtube/downloads/history");
+    const response = await api.get("/api/downloads");
     return response.data;
   },
   
   // Get specific download details
   getDownloadDetails: async (downloadId: string): Promise<IDownloadHistory> => {
-    const response = await api.get(`/youtube/downloads/${downloadId}`);
+    const response = await api.get(`/api/downloads/${downloadId}`);
     return response.data;
   }
 };
@@ -108,7 +108,12 @@ export const notesApi = {
 // History services
 export const historyApi = {
   getHistory: async (): Promise<any[]> => {
-    const response = await api.get("/history");
+    const response = await api.get("/api/history");
+    return response.data;
+  },
+  
+  getHistoryDetail: async (historyId: number): Promise<any> => {
+    const response = await api.get(`/api/history/${historyId}`);
     return response.data;
   }
 };

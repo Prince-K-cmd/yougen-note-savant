@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import youtube, ai, note, history
+from .routes import youtube, ai, note, history, downloads
 
 # Create FastAPI app
 app = FastAPI(
@@ -24,6 +24,7 @@ app.include_router(youtube.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(note.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
+app.include_router(downloads.router, prefix="/api")
 
 @app.get("/")
 async def root():

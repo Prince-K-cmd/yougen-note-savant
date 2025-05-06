@@ -6,6 +6,7 @@ import { historyApi } from "@/services/api";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HistoryView() {
   const { data: notes, isLoading, error } = useQuery({
@@ -36,8 +37,8 @@ export default function HistoryView() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="line-clamp-2 text-sm">
-            {note.content_text?.substring(0, 150) || note.content?.substring(0, 150)}
-            {(note.content_text?.length > 150 || note.content?.length > 150) ? '...' : ''}
+            {note.content_text?.substring(0, 150) || ""}
+            {(note.content_text?.length > 150) ? '...' : ''}
           </div>
         </CardContent>
       </Card>
@@ -74,17 +75,67 @@ export default function HistoryView() {
       </div>
     );
   };
-  
-  // Group notes
-  const groupedNotes = groupNotesByTimePeriod(notes);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <div className="container py-12 flex-grow flex flex-col items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">Loading history...</p>
+        <div className="container py-6 px-4 sm:px-6 flex-grow">
+          <div className="flex items-center gap-2 mb-6">
+            <History className="h-6 w-6" />
+            <h1 className="text-2xl font-bold">History</h1>
+          </div>
+          <div className="space-y-6">
+            <div className="mb-8">
+              <h2 className="text-lg font-medium mb-4">Today</h2>
+              <div>
+                {[1, 2].map(i => (
+                  <div key={i} className="relative pl-6 pb-8 last:pb-0">
+                    <div className="absolute left-0 top-1 h-4 w-4 rounded-full border border-primary bg-background"></div>
+                    <div className="absolute left-2 top-5 h-full w-[1px] bg-muted"></div>
+                    <div className="mb-1">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Card>
+                      <CardHeader className="p-4 pb-2">
+                        <Skeleton className="h-5 w-48 mb-2" />
+                        <Skeleton className="h-3 w-32" />
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <Skeleton className="h-4 w-full mb-1" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="mb-8">
+              <h2 className="text-lg font-medium mb-4">This Week</h2>
+              <div>
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="relative pl-6 pb-8 last:pb-0">
+                    <div className="absolute left-0 top-1 h-4 w-4 rounded-full border border-primary bg-background"></div>
+                    <div className="absolute left-2 top-5 h-full w-[1px] bg-muted"></div>
+                    <div className="mb-1">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Card>
+                      <CardHeader className="p-4 pb-2">
+                        <Skeleton className="h-5 w-48 mb-2" />
+                        <Skeleton className="h-3 w-32" />
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <Skeleton className="h-4 w-full mb-1" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -105,6 +156,9 @@ export default function HistoryView() {
       </div>
     );
   }
+  
+  // Group notes
+  const groupedNotes = groupNotesByTimePeriod(notes || []);
 
   return (
     <div className="min-h-screen flex flex-col">

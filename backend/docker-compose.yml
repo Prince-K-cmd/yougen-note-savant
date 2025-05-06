@@ -17,6 +17,11 @@ services:
     restart: unless-stopped
     networks:
       - yougen_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # pgAdmin for database management
   pgadmin:
