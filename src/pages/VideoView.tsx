@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Message } from "@/types/chat";
 import { Note } from "@/types/note";
-import { ResourceType } from "@/types/youtube";
+import { ResourceType, VideoMetadata } from "@/types/youtube";
 import { v4 as uuidv4 } from "uuid";
 
 import { createTimestamp } from "@/utils/youtube";
@@ -17,29 +17,33 @@ import {
   getChatsByResourceId,
   addChatMessage,
   deleteNote as deleteNoteFromStorage,
-  updateNote,
+  updateNote as updateNoteInStorage,
   pinNote
 } from "@/utils/storage";
 
 import { VideoSection } from "@/components/video/VideoSection";
 import { VideoSidebar } from "@/components/video/VideoSidebar";
 import { TranscriptSegment } from "@/components/transcripts/TranscriptViewer";
-import { generateTranscript, getTranscriptByVideoId } from "@/utils/transcriptService";
+import { getTranscriptByVideoId } from "@/utils/transcriptService";
 import { Header } from "@/components/layout/Header";
 import { UrlInput } from "@/components/youtube/UrlInput";
 import { useToast } from "@/hooks/use-toast";
 
+// API Services
+import { youtubeApi, aiApi, notesApi } from "@/services/api";
+import { IChatRequest } from "@/types/api";
+
 // Mock video data for initial UI rendering
 const mockVideoData = {
   id: "",
-  title: "Sample Video Title",
-  channelTitle: "Sample Channel",
+  title: "Loading...",
+  channelTitle: "Loading...",
   channelId: "",
-  description: "This is a sample video description.",
+  description: "Loading video information...",
   publishedAt: new Date().toISOString(),
   thumbnailUrl: "",
-  duration: "10:30",
-  viewCount: "1,000",
+  duration: "0:00",
+  viewCount: "0",
 };
 
 export default function VideoView() {
@@ -49,7 +53,7 @@ export default function VideoView() {
   const { toast } = useToast();
   const [videoId, setVideoId] = useState(id || "");
   const [currentTime, setCurrentTime] = useState(0);
-  const [videoData, setVideoData] = useState(mockVideoData);
+  const [videoData, setVideoData] = useState<VideoMetadata>(mockVideoData);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -57,6 +61,7 @@ export default function VideoView() {
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
 
   // Load video data and notes
   useEffect(() => {
@@ -65,18 +70,54 @@ export default function VideoView() {
       return;
     }
 
-    // Load video metadata from storage
-    const storedVideo = getVideoMetadata(videoId);
-    if (storedVideo) {
-      setVideoData(storedVideo);
-    } else {
-      // If no stored metadata, use a placeholder with the correct ID
-      setVideoData({
-        ...mockVideoData,
-        id: videoId,
-        thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      });
-    }
+    const fetchVideoMetadata = async () => {
+      setIsLoadingMetadata(true);
+      try {
+        // Try to get cached metadata first
+        const storedVideo = getVideoMetadata(videoId);
+        if (storedVideo) {
+          setVideoData(storedVideo);
+        } else {
+          // If no cached data, fetch from API
+          const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+          const metadata = await youtubeApi.getMetadata(videoUrl);
+          
+          // Convert API response to frontend model
+          const videoMetadata: VideoMetadata = {
+            id: metadata.video_id,
+            title: metadata.title || "Unknown Title",
+            channelTitle: metadata.channel || "Unknown Channel",
+            channelId: "",
+            description: "No description available",
+            publishedAt: metadata.upload_date ? new Date(metadata.upload_date).toISOString() : new Date().toISOString(),
+            thumbnailUrl: metadata.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+            duration: metadata.duration ? formatDuration(metadata.duration) : "0:00",
+            viewCount: "0",
+          };
+          
+          setVideoData(videoMetadata);
+          saveVideoMetadata(videoMetadata);
+        }
+      } catch (error) {
+        console.error("Error fetching video metadata:", error);
+        // If API fails, fallback to basic data
+        setVideoData({
+          ...mockVideoData,
+          id: videoId,
+          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        });
+        
+        toast({
+          title: "Error loading video data",
+          description: "Could not fetch video information from the server.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    };
+
+    fetchVideoMetadata();
 
     // Check if we have a timestamp from navigation state
     if (location.state?.timestamp) {
@@ -95,7 +136,7 @@ export default function VideoView() {
       const latestChat = videoChats.sort((a, b) => b.updatedAt - a.updatedAt)[0];
       setMessages(latestChat.messages);
     }
-  }, [videoId, navigate, location.state]);
+  }, [videoId, navigate, location.state, toast]);
 
   // Load transcript data
   useEffect(() => {
@@ -107,9 +148,25 @@ export default function VideoView() {
         // Check if we have a cached transcript
         let videoTranscript = getTranscriptByVideoId(videoId);
         
-        // If not, generate one
+        // If not, fetch from API
         if (!videoTranscript) {
-          videoTranscript = await generateTranscript(videoId);
+          const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+          
+          try {
+            const response = await fetch(`http://localhost:8000/api/youtube/transcript?video_id=${videoId}`);
+            if (response.ok) {
+              const data = await response.json();
+              videoTranscript = data.map((segment: any) => ({
+                start: segment.start,
+                duration: segment.duration,
+                text: segment.text
+              }));
+            }
+          } catch (error) {
+            console.error("Failed to fetch transcript from API, using fallback method:", error);
+            // Fallback to client-side transcript generation
+            videoTranscript = await getTranscriptByVideoId(videoId);
+          }
         }
         
         setTranscript(videoTranscript || []);
@@ -123,13 +180,47 @@ export default function VideoView() {
     loadTranscript();
   }, [videoId]);
 
-  const loadVideoNotes = () => {
-    // Load notes for this video
-    const videoNotes = getNotesByResourceId(videoId);
-    setNotes(videoNotes);
+  const loadVideoNotes = async () => {
+    // Load notes from storage first for immediate display
+    const storedNotes = getNotesByResourceId(videoId);
+    setNotes(storedNotes);
+    
+    // Then try to fetch from API
+    try {
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const apiNotes = await notesApi.getNotesForVideo(videoUrl);
+      
+      // If successful, update the notes
+      if (apiNotes && apiNotes.length > 0) {
+        // Convert API notes to frontend model
+        const convertedNotes: Note[] = apiNotes.map(note => ({
+          id: note.id.toString(),
+          resourceId: videoId,
+          title: note.content.title || "Untitled",
+          content: note.content_text,
+          richContent: JSON.stringify(note.content),
+          tags: note.tags?.map(tag => ({ 
+            id: tag, 
+            name: tag,
+            color: getRandomColor()
+          })) || [],
+          createdAt: new Date(note.created_at).getTime(),
+          updatedAt: new Date(note.updated_at).getTime(),
+          videoTimestamp: note.timestamp ? {
+            seconds: note.timestamp,
+            formatted: formatTimestamp(note.timestamp)
+          } : undefined
+        }));
+        
+        setNotes(convertedNotes);
+      }
+    } catch (error) {
+      console.error("Error fetching notes from API:", error);
+    }
   };
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
+    // Create and add user message immediately for better UX
     const userMessage: Message = {
       id: uuidv4(),
       content,
@@ -142,19 +233,27 @@ export default function VideoView() {
     setMessages(updatedMessages);
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Send message to API
+      const chatRequest: IChatRequest = {
+        video_url: `https://www.youtube.com/watch?v=${videoId}`,
+        message: content,
+        language: "en"
+      };
+      
+      const response = await aiApi.sendMessage(chatRequest);
+      
+      // Create AI response message
       const aiMessage: Message = {
         id: uuidv4(),
-        content: "This is a simulated AI response. In a real app, this would be generated by an AI service like OpenAI or Anthropic.",
+        content: response.response,
         role: "assistant",
         timestamp: Date.now(),
       };
       
       const newMessages = [...updatedMessages, aiMessage];
       setMessages(newMessages);
-      setIsLoading(false);
-
+      
       // Save chat to storage
       const chatId = saveChat(videoId, `Chat about ${videoData.title}`);
       const chat = getChatByResourceId(videoId);
@@ -166,10 +265,31 @@ export default function VideoView() {
           }
         });
       }
-    }, 1500);
+    } catch (error) {
+      console.error("Error sending message to API:", error);
+      
+      // Create fallback AI response message
+      const aiMessage: Message = {
+        id: uuidv4(),
+        content: "I'm sorry, but I couldn't process your request. There might be an issue with the connection to the AI service.",
+        role: "assistant",
+        timestamp: Date.now(),
+      };
+      
+      setMessages([...updatedMessages, aiMessage]);
+      
+      // Show error toast
+      toast({
+        title: "AI Service Error",
+        description: "Could not connect to the AI service. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSaveNote = ({ title, content, richContent, videoTimestamp }: { 
+  const handleSaveNote = async ({ title, content, richContent, videoTimestamp }: { 
     title: string;
     content: string;
     richContent?: string;
@@ -186,32 +306,77 @@ export default function VideoView() {
         updatedAt: Date.now()
       };
       
-      updateNote(updatedNote);
+      updateNoteInStorage(updatedNote);
       setEditingNote(null);
+      
       toast({
         title: "Note updated",
         description: "Your note has been updated successfully.",
       });
+      
+      // Try to update note on API
+      try {
+        const parsedRichContent = richContent ? JSON.parse(richContent) : { text: content };
+        await notesApi.updateNote(parseInt(editingNote.id), {
+          video_url: `https://www.youtube.com/watch?v=${videoId}`,
+          content: parsedRichContent,
+          timestamp: videoTimestamp?.seconds,
+          tags: editingNote.tags.map(tag => tag.name)
+        });
+      } catch (error) {
+        console.error("Error updating note on API:", error);
+      }
     } else {
       // Create new note
-      const newNote = saveNote({
-        resourceId: videoId,
-        title,
-        content,
-        richContent,
-        tags: [],
-        videoTimestamp,
-      });
-      
-      setNotes([...notes, newNote]);
-      toast({
-        title: "Note saved",
-        description: "Your note has been saved successfully.",
-      });
+      try {
+        // Save to local storage first for immediate update
+        const newNote = saveNote({
+          resourceId: videoId,
+          title,
+          content,
+          richContent,
+          tags: [],
+          videoTimestamp,
+        });
+        
+        setNotes([...notes, newNote]);
+        
+        // Then save to API
+        const parsedRichContent = richContent ? JSON.parse(richContent) : { text: content };
+        const apiNote = await notesApi.saveNote({
+          video_url: `https://www.youtube.com/watch?v=${videoId}`,
+          content: parsedRichContent,
+          timestamp: videoTimestamp?.seconds,
+          tags: []
+        });
+        
+        // Update local note with API ID
+        if (apiNote && apiNote.id) {
+          const updatedNote = {
+            ...newNote,
+            id: apiNote.id.toString()
+          };
+          
+          // Update in storage
+          updateNoteInStorage(updatedNote);
+        }
+        
+        toast({
+          title: "Note saved",
+          description: "Your note has been saved successfully.",
+        });
+      } catch (error) {
+        console.error("Error saving note to API:", error);
+        toast({
+          title: "Note saved locally",
+          description: "Your note was saved locally but couldn't be synced to the server.",
+          variant: "default"
+        });
+      }
     }
     
     setIsCreatingNote(false);
-    loadVideoNotes();
+    loadVideoNotes(); // Refresh notes
   };
 
   const handlePinNote = (noteId: string, isPinned: boolean) => {
@@ -223,8 +388,19 @@ export default function VideoView() {
     loadVideoNotes();
   };
 
-  const handleDeleteNote = (noteId: string) => {
+  const handleDeleteNote = async (noteId: string) => {
+    // Delete from local storage
     deleteNoteFromStorage(noteId);
+    
+    // Try to delete from API
+    try {
+      await fetch(`http://localhost:8000/api/note/${noteId}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error("Error deleting note from API:", error);
+    }
+    
     loadVideoNotes();
     
     toast({
@@ -257,6 +433,34 @@ export default function VideoView() {
     }
   };
 
+  // Helper function to format duration in seconds to mm:ss format
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Helper function to format timestamp in seconds to mm:ss format
+  const formatTimestamp = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Helper function to generate random color for tags
+  const getRandomColor = () => {
+    const colors = [
+      'bg-red-100 text-red-800',
+      'bg-blue-100 text-blue-800',
+      'bg-green-100 text-green-800',
+      'bg-yellow-100 text-yellow-800',
+      'bg-purple-100 text-purple-800',
+      'bg-pink-100 text-pink-800',
+      'bg-indigo-100 text-indigo-800',
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -276,6 +480,7 @@ export default function VideoView() {
             onSaveNote={handleSaveNote}
             isCreatingNote={isCreatingNote}
             onCreateNoteToggle={setIsCreatingNote}
+            isLoading={isLoadingMetadata}
           />
           
           {/* Sidebar with Tabs */}

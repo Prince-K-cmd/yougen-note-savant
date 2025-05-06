@@ -1,9 +1,10 @@
 
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.presentation.routes import youtube, note, ai
+from src.presentation.websocket import WebSocketManager
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# WebSocket manager
+websocket_manager = WebSocketManager()
+
 # Include routers
 app.include_router(youtube.router, prefix="/api/youtube", tags=["YouTube"])
 app.include_router(note.router, prefix="/api/note", tags=["Notes"])
@@ -37,3 +41,15 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 async def root():
     """Health check endpoint."""
     return {"status": "healthy", "message": "VideoNotes API is running"}
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time updates."""
+    await websocket_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Process the received data
+            await websocket_manager.broadcast(data)
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket)

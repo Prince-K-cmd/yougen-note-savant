@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UrlInput } from "@/components/youtube/UrlInput";
 import { VideoCard } from "@/components/youtube/VideoCard";
@@ -7,16 +8,61 @@ import { Header } from "@/components/layout/Header";
 import { ResourceType, VideoMetadata, PlaylistMetadata } from "@/types/youtube";
 import { getAllVideos, getAllPlaylists } from "@/utils/storage";
 import { Youtube, MessageSquare, FileText as NoteIcon, Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { youtubeApi } from "@/services/api";
 
 export default function Index() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [recentVideos, setRecentVideos] = useState<VideoMetadata[]>(() => getAllVideos().slice(0, 6));
   const [recentPlaylists, setRecentPlaylists] = useState<PlaylistMetadata[]>(() => getAllPlaylists().slice(0, 3));
+  const [isBackendAvailable, setIsBackendAvailable] = useState(false);
 
-  const handleUrlSubmit = (parseResult: { type: string; id: string; url: string }) => {
+  // Check if backend is available
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/');
+        setIsBackendAvailable(response.ok);
+      } catch (error) {
+        console.error('Backend connection failed:', error);
+        setIsBackendAvailable(false);
+      }
+    };
+    
+    checkBackend();
+  }, []);
+
+  const handleUrlSubmit = async (parseResult: { type: string; id: string; url: string }) => {
     if (parseResult.type === ResourceType.VIDEO) {
+      // If backend is available, try to fetch metadata first
+      if (isBackendAvailable) {
+        try {
+          await youtubeApi.getMetadata(parseResult.url);
+        } catch (error) {
+          console.error('Error fetching video metadata:', error);
+          toast({
+            title: 'Warning',
+            description: 'Could not fetch video metadata from backend. Using client-side parsing.',
+            variant: 'default',
+          });
+        }
+      }
       navigate(`/video/${parseResult.id}`);
     } else if (parseResult.type === ResourceType.PLAYLIST) {
+      // If backend is available, try to fetch playlist metadata first
+      if (isBackendAvailable) {
+        try {
+          await youtubeApi.getPlaylistMetadata(parseResult.url);
+        } catch (error) {
+          console.error('Error fetching playlist metadata:', error);
+          toast({
+            title: 'Warning',
+            description: 'Could not fetch playlist metadata from backend. Using client-side parsing.',
+            variant: 'default',
+          });
+        }
+      }
       navigate(`/playlist/${parseResult.id}`);
     }
   };
@@ -51,6 +97,12 @@ export default function Index() {
             <div className="max-w-2xl mx-auto">
               <UrlInput onSubmit={handleUrlSubmit} />
             </div>
+            
+            {!isBackendAvailable && (
+              <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-md max-w-2xl mx-auto text-sm">
+                Warning: Backend server not connected. Some features may be unavailable. Make sure the backend is running at http://localhost:8000
+              </div>
+            )}
           </div>
         </section>
 

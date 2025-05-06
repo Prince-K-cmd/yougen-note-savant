@@ -1,6 +1,6 @@
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from urllib.parse import urlparse, parse_qs
 
 from src.infrastructure.tools.download_tool import DownloadTool
@@ -43,6 +43,34 @@ class VideoAgent:
             logger.error(f"Error extracting video ID from {url}: {e}")
             return None
     
+    @staticmethod
+    def extract_playlist_id(url: str) -> Optional[str]:
+        """
+        Extract the playlist ID from a YouTube URL.
+        
+        Args:
+            url: YouTube URL
+            
+        Returns:
+            Playlist ID or None if the URL is invalid
+        """
+        try:
+            parsed_url = urlparse(url)
+            
+            # Handle youtube.com URLs
+            if "youtube.com" in parsed_url.netloc:
+                if parsed_url.path == "/playlist":
+                    return parse_qs(parsed_url.query).get("list", [None])[0]
+                elif "/watch" in parsed_url.path:
+                    # Videos in a playlist also have a list parameter
+                    return parse_qs(parsed_url.query).get("list", [None])[0]
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting playlist ID from {url}: {e}")
+            return None
+    
     @classmethod
     async def get_video_metadata(cls, url: str) -> Optional[Dict[str, Any]]:
         """
@@ -69,6 +97,54 @@ class VideoAgent:
             
         except Exception as e:
             logger.error(f"Error in get_video_metadata for {url}: {e}")
+            return None
+    
+    @classmethod
+    async def get_playlist_metadata(cls, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Get metadata for a YouTube playlist.
+        
+        Args:
+            url: YouTube playlist URL
+            
+        Returns:
+            Playlist metadata or None if an error occurs
+        """
+        try:
+            playlist_id = cls.extract_playlist_id(url)
+            if not playlist_id:
+                logger.error(f"Invalid YouTube playlist URL: {url}")
+                return None
+                
+            playlist_data = await DownloadTool.get_playlist_info(url)
+            if not playlist_data:
+                logger.error(f"Failed to fetch playlist data for {url}")
+                return None
+                
+            return playlist_data
+            
+        except Exception as e:
+            logger.error(f"Error in get_playlist_metadata for {url}: {e}")
+            return None
+    
+    @classmethod
+    async def get_transcript_segments(cls, video_id: str, language: str = "en") -> Optional[List[Dict[str, Any]]]:
+        """
+        Get transcript segments for a YouTube video.
+        
+        Args:
+            video_id: YouTube video ID
+            language: Preferred language code
+            
+        Returns:
+            List of transcript segments or None if not available
+        """
+        try:
+            transcript_segments = await TranscriptTool.get_transcript(video_id, language)
+            return transcript_segments
+            
+        except Exception as e:
+            logger.error(f"Error fetching transcript segments for video {video_id}: {e}")
             return None
     
     @classmethod

@@ -5,17 +5,20 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VideoCard } from "@/components/youtube/VideoCard";
-import { getPlaylistMetadata } from "@/utils/storage";
-import { PlaylistMetadata } from "@/types/youtube";
+import { getPlaylistMetadata, savePlaylistMetadata } from "@/utils/storage";
+import { PlaylistMetadata, VideoMetadata } from "@/types/youtube";
 import { Download, ListVideo } from "lucide-react";
+import { youtubeApi } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import websocketService from "@/services/websocket";
 
-// Mock playlist data for initial UI rendering
-const mockPlaylistData: PlaylistMetadata = {
+// Loading state for playlist data
+const loadingPlaylistData: PlaylistMetadata = {
   id: "",
-  title: "Sample Playlist",
-  channelTitle: "Sample Channel",
+  title: "Loading...",
+  channelTitle: "Loading...",
   channelId: "",
-  description: "This is a sample playlist description.",
+  description: "Loading playlist information...",
   publishedAt: new Date().toISOString(),
   thumbnailUrl: "",
   itemCount: 0,
@@ -25,9 +28,53 @@ const mockPlaylistData: PlaylistMetadata = {
 export default function PlaylistView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [playlistId, setPlaylistId] = useState(id || "");
-  const [playlistData, setPlaylistData] = useState<PlaylistMetadata>(mockPlaylistData);
+  const [playlistData, setPlaylistData] = useState<PlaylistMetadata>(loadingPlaylistData);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({
+    taskId: "",
+    completed: 0,
+    failed: 0,
+    total: 0,
+    percentage: 0,
+    currentVideo: "",
+  });
+
+  // Set up WebSocket connection
+  useEffect(() => {
+    websocketService.connect();
+    
+    // Listen for download progress updates
+    websocketService.on("download_progress", (data: any) => {
+      setDownloadProgress(data);
+    });
+    
+    // Listen for download completion
+    websocketService.on("download_complete", (data: any) => {
+      setIsDownloading(false);
+      toast({
+        title: "Download Complete",
+        description: `Downloaded ${data.completed} videos. ${data.failed} videos failed.`,
+      });
+    });
+    
+    // Listen for download errors
+    websocketService.on("download_error", (data: any) => {
+      setIsDownloading(false);
+      toast({
+        title: "Download Error",
+        description: data.message || "An error occurred during download.",
+        variant: "destructive",
+      });
+    });
+    
+    return () => {
+      // Clean up WebSocket connection
+      websocketService.disconnect();
+    };
+  }, [toast]);
 
   // Load playlist data
   useEffect(() => {
@@ -36,27 +83,149 @@ export default function PlaylistView() {
       return;
     }
 
-    // Load playlist metadata from storage
-    const storedPlaylist = getPlaylistMetadata(playlistId);
-    if (storedPlaylist) {
-      setPlaylistData(storedPlaylist);
-    } else {
-      // If no stored metadata, use a placeholder with the correct ID
-      setPlaylistData({
-        ...mockPlaylistData,
-        id: playlistId,
-        thumbnailUrl: `https://i.ytimg.com/vi/${playlistId}/hqdefault.jpg`,
-      });
+    const fetchPlaylistData = async () => {
+      setIsLoading(true);
       
-      // In a real app, we would fetch the metadata from YouTube API
-      // and save it to storage
-    }
+      try {
+        // Try to get cached data first
+        const storedPlaylist = getPlaylistMetadata(playlistId);
+        
+        if (storedPlaylist) {
+          setPlaylistData(storedPlaylist);
+        } else {
+          // If no cached data, fetch from API
+          const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+          const apiData = await youtubeApi.getPlaylistMetadata(playlistUrl);
+          
+          if (apiData) {
+            // Convert API response to frontend model
+            const playlist: PlaylistMetadata = {
+              id: apiData.playlist_id,
+              title: apiData.title || "Unknown Playlist",
+              channelTitle: apiData.channel || "Unknown Channel",
+              channelId: "",
+              description: "No description available",
+              publishedAt: new Date().toISOString(),
+              thumbnailUrl: apiData.thumbnail || "",
+              itemCount: apiData.item_count || apiData.videos.length,
+              videos: apiData.videos.map((video: any) => ({
+                id: video.video_id,
+                title: video.title || "Unknown Title",
+                channelTitle: video.channel || "Unknown Channel",
+                channelId: "",
+                description: "",
+                publishedAt: video.upload_date ? new Date(video.upload_date).toISOString() : new Date().toISOString(),
+                thumbnailUrl: video.thumbnail || `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`,
+                duration: formatDuration(video.duration || 0),
+                viewCount: "0",
+              })),
+            };
+            
+            setPlaylistData(playlist);
+            savePlaylistMetadata(playlist);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching playlist data:", error);
+        // Fallback to basic info if API fails
+        setPlaylistData({
+          ...loadingPlaylistData,
+          id: playlistId,
+          thumbnailUrl: `https://i.ytimg.com/vi/${playlistId}/hqdefault.jpg`,
+        });
+        
+        toast({
+          title: "Error loading playlist",
+          description: "Could not fetch playlist information from the server.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    setIsLoading(false);
-  }, [playlistId, navigate]);
+    fetchPlaylistData();
+  }, [playlistId, navigate, toast]);
 
   const handleVideoClick = (videoId: string) => {
     navigate(`/video/${videoId}`);
+  };
+
+  const handleDownloadPlaylist = async () => {
+    try {
+      setIsDownloading(true);
+      const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+      
+      const response = await fetch("http://localhost:8000/api/youtube/download/batch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playlist_url: playlistUrl,
+          format: "mp4",
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to start playlist download");
+      }
+      
+      const data = await response.json();
+      setDownloadProgress({
+        taskId: data.task_id,
+        completed: 0,
+        failed: 0,
+        total: data.total_videos,
+        percentage: 0,
+        currentVideo: "",
+      });
+      
+      toast({
+        title: "Download Started",
+        description: `Started downloading ${data.total_videos} videos. You'll be notified when complete.`,
+      });
+    } catch (error) {
+      console.error("Error starting playlist download:", error);
+      setIsDownloading(false);
+      toast({
+        title: "Download Error",
+        description: "Could not start the playlist download. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadVideo = async (videoId: string) => {
+    try {
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      
+      const response = await youtubeApi.downloadVideo({
+        video_url: videoUrl,
+        format: "mp4",
+      });
+      
+      if (response) {
+        toast({
+          title: "Download Started",
+          description: `Downloading "${playlistData.videos.find(v => v.id === videoId)?.title || 'video'}"`,
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading video:", error);
+      toast({
+        title: "Download Error",
+        description: "Could not download the video. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to format duration in seconds to mm:ss format
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -80,7 +249,7 @@ export default function PlaylistView() {
                   />
                   <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-xs text-white flex items-center">
                     <ListVideo className="h-3 w-3 mr-1" />
-                    {playlistData.itemCount || 0} videos
+                    {playlistData.itemCount || playlistData.videos.length} videos
                   </div>
                 </div>
               </div>
@@ -95,11 +264,31 @@ export default function PlaylistView() {
                   </div>
                   
                   <div className="mt-auto pt-4 flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-1" />
-                      Download Playlist
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleDownloadPlaylist}
+                      disabled={isDownloading}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <div className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                          Downloading {downloadProgress.percentage}%
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-1" />
+                          Download All Videos
+                        </>
+                      )}
                     </Button>
                   </div>
+                  
+                  {isDownloading && downloadProgress.currentVideo && (
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Currently downloading: {downloadProgress.currentVideo}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -115,11 +304,25 @@ export default function PlaylistView() {
               {playlistData.videos && playlistData.videos.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {playlistData.videos.map((video) => (
-                    <VideoCard
-                      key={video.id}
-                      video={video}
-                      onClick={() => handleVideoClick(video.id)}
-                    />
+                    <div key={video.id} className="relative group">
+                      <VideoCard
+                        video={video}
+                        onClick={() => handleVideoClick(video.id)}
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="h-8 w-8 rounded-full bg-black/70 hover:bg-black/90 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadVideo(video.id);
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (

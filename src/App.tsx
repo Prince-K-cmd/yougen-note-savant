@@ -11,6 +11,7 @@ import PlaylistView from "./pages/PlaylistView";
 import NotesView from "./pages/NotesView";
 import HistoryView from "./pages/HistoryView";
 import NotFound from "./pages/NotFound";
+import { InitApp } from "@/components/layout/InitApp";
 import "./AppStyles.css";
 
 // Create a client
@@ -21,6 +22,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <TooltipProvider>
+          <InitApp />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/video/:id" element={<VideoView />} />

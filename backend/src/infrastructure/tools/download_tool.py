@@ -2,7 +2,7 @@
 import os
 import logging
 import yt_dlp
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,73 @@ class DownloadTool:
                 
         except Exception as e:
             logger.error(f"Error extracting metadata for {video_url}: {e}")
+            return None
+    
+    @classmethod
+    async def get_playlist_info(cls, playlist_url: str) -> Optional[Dict[str, Any]]:
+        """
+        Get information about a YouTube playlist.
+        
+        Args:
+            playlist_url: YouTube playlist URL
+            
+        Returns:
+            Playlist information or None if an error occurs
+        """
+        try:
+            # Configure yt-dlp options
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": True,
+                "ignoreerrors": True,
+            }
+            
+            # Extract info using yt-dlp
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # yt_dlp is not async, but we wrap it in an async method
+                info = ydl.extract_info(playlist_url, download=False)
+                
+                if not info:
+                    logger.error(f"Failed to extract playlist info for {playlist_url}")
+                    return None
+                
+                # Get playlist metadata
+                playlist_metadata = {
+                    "platform": "youtube",
+                    "playlist_id": info.get("id"),
+                    "title": info.get("title"),
+                    "thumbnail": info.get("thumbnail"),
+                    "item_count": info.get("playlist_count"),
+                    "channel": info.get("uploader"),
+                    "videos": [],
+                }
+                
+                # Extract video entries
+                entries = info.get("entries", [])
+                videos = []
+                
+                for entry in entries:
+                    if not entry:
+                        continue
+                    
+                    video_metadata = {
+                        "video_id": entry.get("id"),
+                        "platform": "youtube",
+                        "title": entry.get("title"),
+                        "thumbnail": entry.get("thumbnail"),
+                        "duration": entry.get("duration"),
+                        "upload_date": entry.get("upload_date"),
+                        "channel": entry.get("uploader"),
+                    }
+                    
+                    videos.append(video_metadata)
+                
+                playlist_metadata["videos"] = videos
+                return playlist_metadata
+                
+        except Exception as e:
+            logger.error(f"Error extracting playlist info for {playlist_url}: {e}")
             return None
     
     @classmethod
