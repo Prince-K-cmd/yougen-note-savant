@@ -74,6 +74,21 @@ export interface IBatchDownloadResponse {
   total_videos: number;
 }
 
+// Download history types
+export interface IDownloadHistory {
+  id: string;
+  video_id?: string;
+  playlist_id?: string;
+  title: string;
+  thumbnail?: string;
+  format: 'mp4' | 'mp3';
+  resolution?: string;
+  size?: number;
+  status: 'completed' | 'failed' | 'in_progress';
+  download_date: string;
+  file_path?: string;
+}
+
 // Note types
 export interface INoteRequest {
   video_url: string;

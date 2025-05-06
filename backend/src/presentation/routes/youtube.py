@@ -1,195 +1,316 @@
 
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from typing import Optional, List
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, Query
+from pydantic import BaseModel, HttpUrl
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta
+import asyncio
 
-from src.models.youtube import (
-    VideoMetadataRequest, 
-    VideoMetadata, 
-    PlaylistMetadata,
-    DownloadRequest, 
-    BatchDownloadRequest,
-    DownloadResponse, 
-    BatchDownloadResponse,
-    FormatListRequest,
-    FormatListResponse
-)
-from src.application.use_cases.youtube_analysis import YoutubeAnalysisUseCase
-from src.infrastructure.repositories.video_repository import VideoRepository
-from src.presentation.websocket import WebSocketManager
+from ...application.use_cases.youtube_analysis import YoutubeAnalysisUseCase
+from ...domain.entities.video import VideoMetadata, VideoFormat, VideoDownloadRequest
+from ...domain.entities.download import DownloadHistory
+from ...infrastructure.tools.download_tool import DownloadTool
+from ..websocket import WebSocketManager
 
-router = APIRouter()
+router = APIRouter(prefix="/youtube", tags=["youtube"])
+websocket_manager = WebSocketManager()
 
-# Dependencies
-async def get_youtube_use_case() -> YoutubeAnalysisUseCase:
-    """Dependency for YoutubeAnalysisUseCase."""
-    video_repository = VideoRepository()
-    return YoutubeAnalysisUseCase(video_repository)
+# Models for responses
+class VideoResponse(BaseModel):
+    platform: str
+    video_id: str
+    title: str
+    thumbnail: Optional[str] = None
+    duration: Optional[int] = None
+    upload_date: Optional[str] = None
+    channel: Optional[str] = None
 
+class FormatResponse(BaseModel):
+    format_id: str
+    extension: str
+    resolution: str
+    filesize_approx: Optional[int] = None
+    format_note: Optional[str] = None
 
-@router.get("/metadata", response_model=VideoMetadata)
-async def get_video_metadata(
-    url: str = Query(..., description="YouTube video URL"),
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-):
-    """
-    Get metadata for a YouTube video.
-    """
-    metadata = await use_case.get_video_metadata(url)
-    
+class FormatsResponse(BaseModel):
+    formats: List[FormatResponse]
+    video_id: str
+    title: str
+
+class DownloadResponse(BaseModel):
+    file_url: str
+    title: str
+    size: Optional[int] = None
+    format: str
+    resolution: Optional[str] = None
+
+class BatchDownloadResponse(BaseModel):
+    task_id: str
+    total_videos: int
+
+class PlaylistResponse(BaseModel):
+    platform: str
+    playlist_id: str
+    title: str
+    thumbnail: Optional[str] = None
+    item_count: Optional[int] = None
+    channel: Optional[str] = None
+    videos: List[VideoResponse]
+
+class TranscriptResponse(BaseModel):
+    video_id: str
+    language: str
+    segments: List[Dict[str, Any]]
+
+class DownloadHistoryResponse(BaseModel):
+    id: str
+    video_id: Optional[str] = None
+    playlist_id: Optional[str] = None
+    title: str
+    thumbnail: Optional[str] = None
+    format: str
+    resolution: Optional[str] = None
+    size: Optional[int] = None
+    status: str
+    download_date: str
+    file_path: Optional[str] = None
+
+# Routes
+@router.get("/metadata")
+async def get_metadata(url: HttpUrl, analysis_use_case: YoutubeAnalysisUseCase = Depends()) -> VideoResponse:
+    """Get metadata for a YouTube video."""
+    metadata = await analysis_use_case.extract_video_metadata(url)
     if not metadata:
-        raise HTTPException(
-            status_code=404,
-            detail="Video metadata could not be retrieved. Check if the URL is valid.",
-        )
-    
-    return VideoMetadata(**metadata)
+        raise HTTPException(status_code=404, detail="Could not extract video metadata")
+    return metadata
 
-
-@router.get("/playlist", response_model=PlaylistMetadata)
-async def get_playlist_metadata(
-    url: str = Query(..., description="YouTube playlist URL"),
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-):
-    """
-    Get metadata for a YouTube playlist, including video details.
-    """
-    playlist_data = await use_case.get_playlist_metadata(url)
+@router.post("/formats")
+async def get_formats(request: dict) -> FormatsResponse:
+    """Get available formats for a YouTube video."""
+    video_url = request.get("video_url")
+    if not video_url:
+        raise HTTPException(status_code=400, detail="Missing video_url parameter")
     
-    if not playlist_data:
-        raise HTTPException(
-            status_code=404,
-            detail="Playlist metadata could not be retrieved. Check if the URL is valid.",
-        )
-    
-    return PlaylistMetadata(**playlist_data)
-
-
-@router.get("/transcript")
-async def get_transcript(
-    video_id: str = Query(..., description="YouTube video ID"),
-    language: str = Query("en", description="Language code"),
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-):
-    """
-    Get the transcript for a YouTube video.
-    """
-    transcript = await use_case.get_video_transcript(
-        f"https://www.youtube.com/watch?v={video_id}", 
-        language
-    )
-    
-    if not transcript:
-        raise HTTPException(
-            status_code=404,
-            detail="Transcript could not be retrieved. The video might not have subtitles.",
-        )
-    
-    return transcript
-
-
-@router.post("/formats", response_model=FormatListResponse)
-async def list_formats(
-    request: FormatListRequest,
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-):
-    """
-    List available formats for a YouTube video.
-    """
-    formats_info = await use_case.get_video_formats(request.video_url)
-    
+    formats_info = await DownloadTool.get_available_formats(video_url)
     if not formats_info:
-        raise HTTPException(
-            status_code=500,
-            detail="Video formats could not be retrieved.",
-        )
+        raise HTTPException(status_code=404, detail="Could not extract format information")
     
-    return FormatListResponse(**formats_info)
+    return FormatsResponse(**formats_info)
 
-
-@router.post("/download", response_model=DownloadResponse)
-async def download_video(
-    request: DownloadRequest,
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-):
-    """
-    Download a YouTube video in the specified format and resolution.
-    """
-    if request.format not in ["mp4", "mp3"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid format. Supported formats are 'mp4' and 'mp3'.",
-        )
+@router.post("/download")
+async def download_video(request: VideoDownloadRequest) -> DownloadResponse:
+    """Download a YouTube video."""
+    # This would actually download the video and store a history record
+    # For now, we'll simulate the response
     
-    # For MP4, validate resolution
-    if request.format == "mp4" and request.resolution not in ["240", "360", "480", "720", "1080"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid resolution. Supported resolutions are '240', '360', '480', '720', '1080'.",
-        )
+    # In a real implementation, you would:
+    # 1. Download the video using DownloadTool
+    # 2. Store download history in database
+    # 3. Return download information
     
-    download_info = await use_case.download_video(
-        request.video_url, 
+    download_info = await DownloadTool.download_video(
+        request.video_url,
         request.format,
-        request.resolution if request.format == "mp4" else None
+        request.resolution,
     )
     
     if not download_info:
-        raise HTTPException(
-            status_code=500,
-            detail="Video download failed. The video might be unavailable or restricted.",
-        )
+        raise HTTPException(status_code=500, detail="Download failed")
     
-    return DownloadResponse(**download_info)
-
-
-@router.post("/download/batch", response_model=BatchDownloadResponse)
-async def download_playlist(
-    request: BatchDownloadRequest,
-    background_tasks: BackgroundTasks,
-    use_case: YoutubeAnalysisUseCase = Depends(get_youtube_use_case),
-    websocket_manager: WebSocketManager = Depends(lambda: WebSocketManager()),
-):
-    """
-    Download all videos in a YouTube playlist in the specified format.
-    This is an async operation that will send progress updates via WebSocket.
-    """
-    if request.format not in ["mp4", "mp3"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid format. Supported formats are 'mp4' and 'mp3'.",
-        )
-    
-    # For MP4, validate resolution
-    if request.format == "mp4" and request.resolution not in ["240", "360", "480", "720", "1080"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid resolution. Supported resolutions are '240', '360', '480', '720', '1080'.",
-        )
-    
-    # Get playlist metadata to know how many videos to download
-    playlist_data = await use_case.get_playlist_metadata(request.playlist_url)
-    
-    if not playlist_data:
-        raise HTTPException(
-            status_code=404,
-            detail="Playlist metadata could not be retrieved. Check if the URL is valid.",
-        )
-    
-    # Generate a task ID for tracking
-    import uuid
-    task_id = str(uuid.uuid4())
-    
-    # Start background task for downloading videos
-    background_tasks.add_task(
-        use_case.download_playlist,
-        request.playlist_url, 
-        request.format,
-        request.resolution if request.format == "mp4" else None, 
-        task_id,
-        websocket_manager
+    # Create simulated response
+    response = DownloadResponse(
+        file_url=f"/downloads/{download_info['video_id']}.{download_info['format']}",
+        title=download_info['title'],
+        size=download_info.get('file_size'),
+        format=download_info['format'],
+        resolution=download_info.get('resolution')
     )
     
-    return BatchDownloadResponse(
-        task_id=task_id,
-        total_videos=playlist_data["item_count"] or len(playlist_data["videos"])
+    # In a real implementation, you would save this to your database
+    # downloads_repository.save_download_history(...)
+    
+    return response
+
+@router.get("/playlist")
+async def get_playlist(url: HttpUrl, analysis_use_case: YoutubeAnalysisUseCase = Depends()) -> PlaylistResponse:
+    """Get metadata for a YouTube playlist."""
+    playlist_info = await DownloadTool.get_playlist_info(str(url))
+    if not playlist_info:
+        raise HTTPException(status_code=404, detail="Could not extract playlist information")
+    
+    return PlaylistResponse(**playlist_info)
+
+@router.post("/download/batch")
+async def download_playlist(request: dict) -> BatchDownloadResponse:
+    """Download all videos in a YouTube playlist."""
+    playlist_url = request.get("playlist_url")
+    format_type = request.get("format", "mp4")
+    resolution = request.get("resolution")
+    
+    if not playlist_url:
+        raise HTTPException(status_code=400, detail="Missing playlist_url parameter")
+    
+    # Get playlist info
+    playlist_info = await DownloadTool.get_playlist_info(playlist_url)
+    if not playlist_info:
+        raise HTTPException(status_code=404, detail="Could not extract playlist information")
+    
+    # In a real implementation, you would:
+    # 1. Create a background task to download all videos
+    # 2. Store the task ID and return it
+    # 3. Update progress via WebSocket
+    
+    task_id = "task_" + datetime.now().strftime("%Y%m%d%H%M%S")
+    total_videos = len(playlist_info["videos"])
+    
+    # Just for simulation, we'll create a task that sends WebSocket updates
+    asyncio.create_task(
+        simulate_batch_download(task_id, playlist_info, format_type, resolution)
     )
+    
+    return BatchDownloadResponse(task_id=task_id, total_videos=total_videos)
+
+@router.get("/transcript")
+async def get_transcript(
+    video_id: str,
+    language: str = "en",
+    analysis_use_case: YoutubeAnalysisUseCase = Depends()
+) -> TranscriptResponse:
+    """Get transcript for a YouTube video."""
+    transcript = await analysis_use_case.get_transcript(video_id, language)
+    if not transcript:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+        
+    return TranscriptResponse(
+        video_id=video_id,
+        language=language,
+        segments=transcript["segments"]
+    )
+
+@router.get("/downloads/history")
+async def get_download_history() -> List[DownloadHistoryResponse]:
+    """Get download history."""
+    # In a real implementation, you would fetch this from a database
+    # Here, we'll return simulated data
+    
+    # Simulate download history
+    now = datetime.now()
+    history = [
+        DownloadHistoryResponse(
+            id="dl_001",
+            video_id="dQw4w9WgXcQ",
+            title="Never Gonna Give You Up",
+            thumbnail="https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+            format="mp4",
+            resolution="720",
+            size=15728640,  # 15MB
+            status="completed",
+            download_date=(now - timedelta(days=1)).isoformat(),
+            file_path="/downloads/dQw4w9WgXcQ.mp4"
+        ),
+        DownloadHistoryResponse(
+            id="dl_002",
+            video_id="9bZkp7q19f0",
+            title="PSY - GANGNAM STYLE",
+            thumbnail="https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg",
+            format="mp3",
+            size=5242880,  # 5MB
+            status="completed",
+            download_date=(now - timedelta(days=2)).isoformat(),
+            file_path="/downloads/9bZkp7q19f0.mp3"
+        ),
+        DownloadHistoryResponse(
+            id="dl_003",
+            playlist_id="PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+            title="Top Music Videos Playlist",
+            format="mp4",
+            resolution="480",
+            status="in_progress",
+            download_date=now.isoformat()
+        ),
+        DownloadHistoryResponse(
+            id="dl_004",
+            video_id="kJQP7kiw5Fk",
+            title="Luis Fonsi - Despacito ft. Daddy Yankee",
+            thumbnail="https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg",
+            format="mp4",
+            resolution="1080",
+            size=52428800,  # 50MB
+            status="failed",
+            download_date=(now - timedelta(hours=5)).isoformat()
+        ),
+    ]
+    
+    return history
+
+@router.get("/downloads/{download_id}")
+async def get_download_details(download_id: str) -> DownloadHistoryResponse:
+    """Get details for a specific download."""
+    # In a real implementation, you would fetch this from a database
+    # For now, we'll simulate the response
+    
+    now = datetime.now()
+    
+    # Just return a simulated record
+    if download_id == "dl_001":
+        return DownloadHistoryResponse(
+            id="dl_001",
+            video_id="dQw4w9WgXcQ",
+            title="Never Gonna Give You Up",
+            thumbnail="https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+            format="mp4",
+            resolution="720",
+            size=15728640,  # 15MB
+            status="completed",
+            download_date=(now - timedelta(days=1)).isoformat(),
+            file_path="/downloads/dQw4w9WgXcQ.mp4"
+        )
+    
+    # If the download_id is not found
+    raise HTTPException(status_code=404, detail=f"Download with ID {download_id} not found")
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket connection for real-time download updates."""
+    connection_id = await websocket_manager.connect(websocket)
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # In a real implementation, you would process WebSocket messages here
+            await websocket_manager.send_personal_message({"type": "ack", "data": {"message": "Message received"}}, connection_id)
+    except Exception as e:
+        websocket_manager.disconnect(websocket)
+
+# Simulated background task to demonstrate WebSocket updates
+async def simulate_batch_download(task_id: str, playlist_info: dict, format_type: str, resolution: str):
+    """Simulate a batch download process with progress updates via WebSocket."""
+    videos = playlist_info["videos"]
+    total = len(videos)
+    
+    for i, video in enumerate(videos):
+        # Simulate download progress
+        await websocket_manager.broadcast({
+            "type": "download_progress",
+            "data": {
+                "task_id": task_id,
+                "completed": i,
+                "failed": 0,
+                "total": total,
+                "percentage": int((i / total) * 100),
+                "current_video": video["title"]
+            }
+        })
+        
+        # Simulate download time
+        await asyncio.sleep(1)
+    
+    # Final update - all complete
+    await websocket_manager.broadcast({
+        "type": "download_complete",
+        "data": {
+            "task_id": task_id,
+            "completed": total,
+            "failed": 0,
+            "total": total
+        }
+    })

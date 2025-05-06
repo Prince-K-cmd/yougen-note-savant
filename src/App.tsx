@@ -10,6 +10,7 @@ import VideoView from "./pages/VideoView";
 import PlaylistView from "./pages/PlaylistView";
 import NotesView from "./pages/NotesView";
 import HistoryView from "./pages/HistoryView";
+import DownloadsView from "./pages/DownloadsView";
 import NotFound from "./pages/NotFound";
 import { InitApp } from "@/components/layout/InitApp";
 import "./AppStyles.css";
@@ -28,6 +29,7 @@ const App = () => {
             <Route path="/video/:id" element={<VideoView />} />
             <Route path="/playlist/:id" element={<PlaylistView />} />
             <Route path="/notes" element={<NotesView />} />
+            <Route path="/downloads" element={<DownloadsView />} />
             <Route path="/history" element={<HistoryView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

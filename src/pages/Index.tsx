@@ -1,22 +1,54 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { UrlInput } from "@/components/youtube/UrlInput";
 import { VideoCard } from "@/components/youtube/VideoCard";
 import { PlaylistCard } from "@/components/youtube/PlaylistCard";
 import { Header } from "@/components/layout/Header";
-import { ResourceType, VideoMetadata, PlaylistMetadata } from "@/types/youtube";
-import { getAllVideos, getAllPlaylists } from "@/utils/storage";
+import { ResourceType } from "@/types/youtube";
 import { Youtube, MessageSquare, FileText as NoteIcon, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { youtubeApi } from "@/services/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Index() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [recentVideos, setRecentVideos] = useState<VideoMetadata[]>(() => getAllVideos().slice(0, 6));
-  const [recentPlaylists, setRecentPlaylists] = useState<PlaylistMetadata[]>(() => getAllPlaylists().slice(0, 3));
   const [isBackendAvailable, setIsBackendAvailable] = useState(false);
+  
+  // Fetch recent videos and playlists from backend or local storage
+  const { data: recentVideos, isLoading: videosLoading } = useQuery({
+    queryKey: ['recentVideos'],
+    queryFn: async () => {
+      // In a real implementation, this would call an API endpoint
+      // For now, we'll use the local storage as a fallback
+      try {
+        // Simulating API call to get recent videos
+        const videos = localStorage.getItem("yougen_videos");
+        return videos ? JSON.parse(videos).slice(0, 6) : [];
+      } catch (error) {
+        console.error('Error fetching recent videos:', error);
+        return [];
+      }
+    },
+  });
+
+  const { data: recentPlaylists, isLoading: playlistsLoading } = useQuery({
+    queryKey: ['recentPlaylists'],
+    queryFn: async () => {
+      // In a real implementation, this would call an API endpoint
+      // For now, we'll use the local storage as a fallback
+      try {
+        // Simulating API call to get recent playlists
+        const playlists = localStorage.getItem("yougen_playlists");
+        return playlists ? JSON.parse(playlists).slice(0, 3) : [];
+      } catch (error) {
+        console.error('Error fetching recent playlists:', error);
+        return [];
+      }
+    },
+  });
 
   // Check if backend is available
   useEffect(() => {
@@ -74,6 +106,31 @@ export default function Index() {
   const handlePlaylistClick = (playlistId: string) => {
     navigate(`/playlist/${playlistId}`);
   };
+  
+  // Render skeleton loaders
+  const renderVideoSkeletons = () => (
+    <>
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-36 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      ))}
+    </>
+  );
+  
+  const renderPlaylistSkeletons = () => (
+    <>
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-36 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -107,36 +164,40 @@ export default function Index() {
         </section>
 
         {/* Recent Videos Section */}
-        {recentVideos.length > 0 && (
+        {(videosLoading || (recentVideos && recentVideos.length > 0)) && (
           <section className="py-8 px-4">
             <div className="container">
               <h2 className="text-2xl font-bold mb-6">Recent Videos</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {recentVideos.map((video) => (
-                  <VideoCard
-                    key={video.id}
-                    video={video}
-                    onClick={() => handleVideoClick(video.id)}
-                  />
-                ))}
+                {videosLoading ? renderVideoSkeletons() : (
+                  recentVideos.map((video) => (
+                    <VideoCard
+                      key={video.id}
+                      video={video}
+                      onClick={() => handleVideoClick(video.id)}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </section>
         )}
 
         {/* Recent Playlists Section */}
-        {recentPlaylists.length > 0 && (
+        {(playlistsLoading || (recentPlaylists && recentPlaylists.length > 0)) && (
           <section className="py-8 px-4">
             <div className="container">
               <h2 className="text-2xl font-bold mb-6">Recent Playlists</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {recentPlaylists.map((playlist) => (
-                  <PlaylistCard
-                    key={playlist.id}
-                    playlist={playlist}
-                    onClick={() => handlePlaylistClick(playlist.id)}
-                  />
-                ))}
+                {playlistsLoading ? renderPlaylistSkeletons() : (
+                  recentPlaylists.map((playlist) => (
+                    <PlaylistCard
+                      key={playlist.id}
+                      playlist={playlist}
+                      onClick={() => handlePlaylistClick(playlist.id)}
+                    />
+                  ))
+                )}
               </div>
             </div>
           </section>

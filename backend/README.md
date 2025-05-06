@@ -1,124 +1,153 @@
 
-# VideoNotes Backend
+# YouGen Backend
 
-A FastAPI backend for the VideoNotes application, designed to handle YouTube video metadata, transcripts, AI-powered chat, and note-taking features.
+This is the backend for the YouGen Note Savant application. It provides APIs for video analysis, download management, and note-taking.
 
-## Features
+## Database Setup with Docker
 
-- YouTube metadata extraction
-- AI-powered video analysis and chat
-- Note management with AI summaries
-- YouTube video/audio download capabilities
-
-## Tech Stack
-
-- Python 3.11+
-- FastAPI
-- PydanticAI with Groq integration
-- yt-dlp for YouTube downloads
-- youtube-transcript-api for transcripts
-- PostgreSQL with asyncpg and pgvector
-
-## Setup
+The backend uses PostgreSQL as its database, and we provide a Docker Compose setup for easy development.
 
 ### Prerequisites
 
-- Python 3.11+
-- PostgreSQL with pgvector extension installed
-- Groq API key
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Environment Variables
+### Quick Start
 
-Create a `.env` file in the root directory with the following variables:
-
-```
-GROQ_API_KEY=your_groq_api_key
-DATABASE_URL=postgresql://user:password@localhost:5432/videonotes
-```
-
-### Installation
-
-1. Install dependencies:
+1. Clone the repository and navigate to the backend directory
 
 ```bash
-pip install -e .
+cd backend
 ```
 
-2. Set up the database:
+2. Create a `.env` file with the following content:
+
+```
+DB_USERNAME=postgres
+DB_PASSWORD=yougen123
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=yougen
+```
+
+3. Start the database with Docker Compose
 
 ```bash
-psql -U postgres -c "CREATE DATABASE videonotes;"
-psql -U postgres -d videonotes -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker-compose up -d
 ```
 
-3. Run database migrations:
+This will start a PostgreSQL database and a pgAdmin instance for database management.
+
+4. Run database migrations
 
 ```bash
-python -m src.infrastructure.db.migrations
+alembic upgrade head
 ```
 
-4. Start the server:
+5. Start the backend API server
 
 ```bash
 uvicorn src.presentation.main:app --reload
 ```
 
+### Docker Compose Services
+
+The `docker-compose.yml` file includes the following services:
+
+- **db**: PostgreSQL database server
+- **pgadmin**: Web-based PostgreSQL admin tool
+
+You can access pgAdmin at http://localhost:5050 with:
+- Email: admin@yougen.com
+- Password: admin123
+
 ## Database Schema
 
+The YouGen database includes the following tables:
+
+- **video_metadata**: Stores information about videos
+- **notes**: Stores user notes related to videos
+- **download_history**: Tracks user downloads
+- **batch_downloads**: Tracks batch download tasks
+
+## Database Queries
+
+Here are some common database queries you can run with SQL or using the pgAdmin interface:
+
+### Get All Notes
+
 ```sql
--- videos table
-CREATE TABLE videos (
-    id SERIAL PRIMARY KEY,
-    video_id TEXT NOT NULL UNIQUE,
-    platform TEXT NOT NULL,
-    title TEXT NOT NULL,
-    thumbnail TEXT,
-    duration INTEGER,
-    upload_date TIMESTAMP,
-    channel TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+SELECT * FROM notes;
+```
 
--- chats table
-CREATE TABLE chats (
-    id SERIAL PRIMARY KEY,
-    video_id TEXT NOT NULL REFERENCES videos(video_id),
-    message TEXT NOT NULL,
-    response TEXT NOT NULL,
-    language TEXT DEFAULT 'en',
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### Get Download History
 
--- notes table
-CREATE TABLE notes (
-    id SERIAL PRIMARY KEY,
-    video_id TEXT NOT NULL REFERENCES videos(video_id),
-    content JSONB NOT NULL,
-    content_text TEXT NOT NULL,
-    content_embedding vector(1536),
-    timestamp INTEGER,
-    tags TEXT[],
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+```sql
+SELECT * FROM download_history;
+```
 
--- downloads table
-CREATE TABLE downloads (
-    id SERIAL PRIMARY KEY,
-    video_id TEXT NOT NULL REFERENCES videos(video_id),
-    format TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    file_size INTEGER,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### Get Most Recent Downloads
+
+```sql
+SELECT * FROM download_history ORDER BY download_date DESC LIMIT 10;
+```
+
+### Get Downloads by Format
+
+```sql
+SELECT * FROM download_history WHERE format = 'mp4';
+```
+
+### Get Failed Downloads
+
+```sql
+SELECT * FROM download_history WHERE status = 'failed';
+```
+
+### Get Batch Download Stats
+
+```sql
+SELECT 
+  task_id, 
+  COUNT(*) as total_downloads,
+  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+FROM download_history
+WHERE batch_id IS NOT NULL
+GROUP BY task_id;
 ```
 
 ## API Documentation
 
-After starting the server, access the API documentation at:
-- OpenAPI UI: http://localhost:8000/docs
-- ReDoc UI: http://localhost:8000/redoc
+Once the server is running, you can access the API documentation at:
 
-## TypeScript Interfaces
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-TypeScript interfaces for frontend integration are available in `frontend/src/types/api.ts`.
+## Development
+
+### Running Migrations
+
+We use Alembic for database migrations.
+
+To create a new migration:
+
+```bash
+alembic revision --autogenerate -m "Your migration message"
+```
+
+To run migrations:
+
+```bash
+alembic upgrade head
+```
+
+To revert the last migration:
+
+```bash
+alembic downgrade -1
+```
+
+### Database Models
+
+The database models are defined in SQLAlchemy in the `src/domain/models` directory. Any changes to these models should be reflected in the database through migrations.

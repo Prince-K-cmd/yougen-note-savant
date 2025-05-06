@@ -11,7 +11,8 @@ import {
   IFormatListRequest,
   IFormatListResponse,
   IBatchDownloadRequest, 
-  IBatchDownloadResponse 
+  IBatchDownloadResponse,
+  IDownloadHistory
 } from "@/types/api";
 
 // Create axios instance with base URL
@@ -58,6 +59,18 @@ export const youtubeApi = {
       params: { video_id: videoId, language } 
     });
     return response.data;
+  },
+  
+  // Get download history
+  getDownloadHistory: async (): Promise<IDownloadHistory[]> => {
+    const response = await api.get("/youtube/downloads/history");
+    return response.data;
+  },
+  
+  // Get specific download details
+  getDownloadDetails: async (downloadId: string): Promise<IDownloadHistory> => {
+    const response = await api.get(`/youtube/downloads/${downloadId}`);
+    return response.data;
   }
 };
 
@@ -81,8 +94,21 @@ export const notesApi = {
     return response.data;
   },
 
+  getAllNotes: async (): Promise<INoteResponse[]> => {
+    const response = await api.get("/note/list/all");
+    return response.data;
+  },
+
   updateNote: async (noteId: number, request: INoteRequest): Promise<INoteResponse> => {
     const response = await api.put(`/note/${noteId}`, request);
+    return response.data;
+  }
+};
+
+// History services
+export const historyApi = {
+  getHistory: async (): Promise<any[]> => {
+    const response = await api.get("/history");
     return response.data;
   }
 };
