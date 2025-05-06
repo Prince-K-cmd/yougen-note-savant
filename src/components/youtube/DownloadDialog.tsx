@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { youtubeApi } from "@/services/api";
-import { IVideoFormat } from "@/types/api";
+import { IVideoFormat, IDownloadRequest } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,7 @@ export function DownloadDialog({ videoId, videoTitle, isOpen, onClose }: Downloa
   const [formats, setFormats] = useState<IVideoFormat[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<"mp4" | "mp3">("mp4");
-  const [selectedResolution, setSelectedResolution] = useState<string>("720");
+  const [selectedResolution, setSelectedResolution] = useState<"240" | "360" | "480" | "720" | "1080">("720");
   const [isDownloading, setIsDownloading] = useState(false);
   
   useEffect(() => {
@@ -69,7 +69,7 @@ export function DownloadDialog({ videoId, videoTitle, isOpen, onClose }: Downloa
     setIsDownloading(true);
     try {
       const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const request = {
+      const request: IDownloadRequest = {
         video_url: videoUrl,
         format: selectedFormat,
         resolution: selectedFormat === "mp4" ? selectedResolution : undefined
@@ -136,7 +136,7 @@ export function DownloadDialog({ videoId, videoTitle, isOpen, onClose }: Downloa
                 <span className="text-sm font-medium col-span-1">Resolution:</span>
                 <Select 
                   value={selectedResolution}
-                  onValueChange={setSelectedResolution}
+                  onValueChange={(value: "240" | "360" | "480" | "720" | "1080") => setSelectedResolution(value)}
                   disabled={isDownloading}
                 >
                   <SelectTrigger className="col-span-3">
