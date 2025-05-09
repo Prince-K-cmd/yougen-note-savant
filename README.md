@@ -1,73 +1,76 @@
-# Welcome to your Lovable project
 
-## Project info
+# YouGen Note Savant
 
-**URL**: https://lovable.dev/projects/838eefdd-d52e-44ab-a2e0-55a2ed2367d8
+YouGen Note Savant is a web application for analyzing YouTube videos, creating notes, and managing downloads.
 
-## How can I edit this code?
+## Project Structure
 
-There are several ways of editing your application.
+This project is organized into two main directories:
 
-**Use Lovable**
+- `frontend/`: Contains the React application with TypeScript, Tailwind CSS, and shadcn/ui
+- `backend/`: Contains the FastAPI Python backend with PostgreSQL database
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/838eefdd-d52e-44ab-a2e0-55a2ed2367d8) and start prompting.
+## Backend Setup
 
-Changes made via Lovable will be committed automatically to this repo.
+To set up the backend services:
 
-**Use your preferred IDE**
+```bash
+# Navigate to the backend directory
+cd backend
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Create a .env file (if not exists)
+echo "DB_USERNAME=postgres
+DB_PASSWORD=yougen123
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=yougen" > .env
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Start the database services
+docker-compose up -d
 
-Follow these steps:
+# Install Python dependencies
+pip install -r requirements.txt
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Initialize the database
+python -m src.infrastructure.db.init_db
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Start the backend server
+uvicorn src.presentation.main:app --reload
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+For more detailed information about the database setup, refer to the [Backend README](backend/README.md).
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## Frontend Setup
+
+To set up the frontend:
+
+```bash
+# Navigate to the frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Features
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- YouTube video analysis
+- Transcript viewing and generation
+- Note-taking system
+- Download management
+- History tracking
+- AI-powered insights
 
-**Use GitHub Codespaces**
+## Development
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+This project uses:
+- Vite for frontend building
+- React and TypeScript
+- Tailwind CSS and shadcn/ui for styling
+- FastAPI for the backend API
+- PostgreSQL for the database
+- Docker for database containerization
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/838eefdd-d52e-44ab-a2e0-55a2ed2367d8) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
